@@ -1,0 +1,2244 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Peta Makam · TPU Pandu Bandung</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --forest-deep: #17301F;
+    --forest: #274734;
+    --forest-soft: #3C6349;
+    --stone: #EFEAE0;
+    --stone-dim: #E2DCCC;
+    --paper: #FAF8F3;
+    --gold: #B4894F;
+    --gold-soft: #D9B77E;
+    --ink: #21261F;
+    --ink-soft: #5B6155;
+    --line: #D8D0BC;
+    --blok-t: #A88F2E;
+    --blok-cb: #4E93A3;
+    --blok-ca: #8266A8;
+    --ereveld: #C77F63;
+    --danger: #A5453A;
+    --radius: 14px;
+    --shadow: 0 10px 40px -12px rgba(23,48,31,0.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    background:var(--stone);
+    overflow:hidden;
+  }
+  ::selection{ background: var(--gold-soft); color: var(--forest-deep); }
+
+  h1,h2,h3,.display{ font-family:'Fraunces',serif; }
+
+  /* ---------- App shell ---------- */
+  #app{ display:flex; width:100vw; height:100vh; position:relative; }
+
+  /* ---------- LEFT PANEL (desktop) ---------- */
+  #panel{
+    width:35%; min-width:380px; max-width:460px;
+    height:100%;
+    background:var(--paper);
+    display:flex; flex-direction:column;
+    border-right:1px solid var(--line);
+    z-index:20;
+    position:relative;
+  }
+  .panel-header{
+    padding:22px 24px 16px;
+    border-bottom:1px solid var(--line);
+    background:
+      linear-gradient(180deg, var(--forest-deep), var(--forest) 140%);
+    color:var(--stone);
+    position:relative;
+    overflow:hidden;
+  }
+  .panel-header::after{
+    content:"";
+    position:absolute; inset:0;
+    background-image: radial-gradient(circle at 18% 30%, rgba(217,183,126,0.10) 0, transparent 45%),
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 26px);
+    pointer-events:none;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--gold-soft);
+    display:flex; align-items:center; gap:8px;
+    margin-bottom:8px;
+    position:relative;
+  }
+  .eyebrow .dot{ width:6px; height:6px; border-radius:50%; background:var(--gold-soft); box-shadow:0 0 0 3px rgba(217,183,126,0.18);}
+  .panel-header h1{
+    margin:0; font-size:26px; font-weight:600; line-height:1.15;
+    color:#fff; position:relative;
+  }
+  .panel-header p{
+    margin:6px 0 0; font-size:13px; color:rgba(239,234,224,0.72); position:relative;
+  }
+
+  .search-wrap{ padding:18px 20px 8px; }
+  .search-box{
+    position:relative;
+    display:flex; align-items:center;
+    background:#fff;
+    border:1.5px solid var(--line);
+    border-radius:12px;
+    padding:0 14px;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .search-box:focus-within{
+    border-color:var(--forest-soft);
+    box-shadow:0 0 0 3px rgba(60,99,73,0.12);
+  }
+  .search-box svg{ flex:0 0 auto; opacity:0.5; }
+  .search-box input{
+    flex:1; border:none; outline:none; background:transparent;
+    padding:13px 10px; font-size:14.5px; font-family:'Inter',sans-serif; color:var(--ink);
+  }
+  .search-box input::placeholder{ color:#9a9587; }
+  .clear-btn{
+    border:none; background:var(--stone-dim); color:var(--ink-soft);
+    width:22px; height:22px; border-radius:50%; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:13px;
+    flex:0 0 auto;
+  }
+  .clear-btn:hover{ background:var(--line); }
+
+  .chips{
+    display:flex; gap:8px; flex-wrap:wrap; padding:14px 20px 12px;
+  }
+  .chip{
+    border:1.5px solid var(--line);
+    background:#fff;
+    color:var(--ink-soft);
+    font-size:12.5px; font-weight:500;
+    padding:7px 13px;
+    border-radius:100px;
+    cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+    transition:all .15s ease;
+    white-space:nowrap;
+    font-family:'Inter',sans-serif;
+  }
+  .chip .swatch{ width:8px; height:8px; border-radius:50%; }
+  .chip:hover{ border-color:var(--forest-soft); }
+  .chip.active{
+    background:var(--forest-deep); border-color:var(--forest-deep); color:#fff;
+  }
+  .chip.active .swatch{ box-shadow:0 0 0 2px rgba(255,255,255,0.35); }
+
+  .year-filter{
+    padding:0 20px 12px;
+  }
+  .year-filter label{
+    display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:0.07em;
+    color:var(--ink-soft); font-family:'JetBrains Mono', monospace; margin-bottom:6px;
+  }
+  .year-filter-row{
+    display:flex; align-items:center; gap:8px;
+  }
+  .year-filter-row input[type="number"]{
+    width:0; flex:1;
+    border:1.5px solid var(--line); border-radius:9px;
+    padding:8px 10px; font-size:13px; font-family:'JetBrains Mono', monospace; color:var(--ink);
+    background:#fff;
+  }
+  .year-filter-row input[type="number"]:focus{ outline:none; border-color:var(--forest-soft); }
+  .year-filter-row input[type="number"]::-webkit-inner-spin-button{ opacity:0.4; }
+  .year-sep{ color:var(--ink-soft); font-size:13px; flex:0 0 auto; }
+  .year-reset{
+    flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+    border:1px solid var(--line); background:#fff; color:var(--ink-soft);
+    cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center;
+  }
+  .year-reset:hover{ background:var(--stone-dim); color:var(--ink); }
+  .mobile-year-row{ display:none; padding:10px 14px 0; }
+  .mobile-year-row.show{ display:block; }
+
+  .result-meta{
+    padding:2px 20px 10px;
+    font-size:12px; color:var(--ink-soft);
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:'JetBrains Mono', monospace;
+    letter-spacing:0.02em;
+  }
+
+  .scroll-area{
+    flex:1; overflow-y:auto;
+    padding:0 14px 20px;
+  }
+  .scroll-area::-webkit-scrollbar{ width:8px; }
+  .scroll-area::-webkit-scrollbar-thumb{ background:var(--line); border-radius:8px; }
+  .scroll-area::-webkit-scrollbar-track{ background:transparent; }
+
+  /* Grave list card */
+  .grave-item{
+    display:flex; gap:12px; align-items:flex-start;
+    padding:13px 12px;
+    border-radius:12px;
+    cursor:pointer;
+    border:1px solid transparent;
+    margin-bottom:2px;
+    transition:background .12s ease, border-color .12s ease;
+  }
+  .grave-item:hover{ background:var(--stone-dim); }
+  .grave-item.selected{
+    background:#fff;
+    border-color:var(--gold-soft);
+    box-shadow:var(--shadow);
+  }
+  .grave-icon{
+    flex:0 0 auto;
+    width:34px; height:34px; border-radius:9px;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:15px;
+    margin-top:2px;
+  }
+  .grave-info{ flex:1; min-width:0; }
+  .grave-name{ font-weight:600; font-size:14.5px; color:var(--ink); line-height:1.3; }
+  .grave-sub{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .grave-badges{ display:flex; gap:6px; margin-top:7px; flex-wrap:wrap; }
+  .badge{
+    font-size:10.5px; font-family:'JetBrains Mono', monospace;
+    padding:2px 7px; border-radius:6px;
+    background:var(--stone-dim); color:var(--ink-soft);
+    letter-spacing:0.02em;
+  }
+
+  .empty-state{
+    text-align:center; padding:60px 30px 30px; color:var(--ink-soft);
+  }
+  .empty-state .glyph{
+    font-size:34px; margin-bottom:14px; opacity:0.5;
+  }
+  .empty-state h3{ font-size:16px; margin:0 0 6px; color:var(--ink); font-weight:600;}
+  .empty-state p{ font-size:13px; line-height:1.5; margin:0; }
+
+  /* ---------- Detail card ---------- */
+  .detail-card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:16px;
+    margin:12px 6px 4px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    animation:cardIn .28s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes cardIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+  .detail-top{
+    padding:18px 20px 16px;
+    background:linear-gradient(160deg, var(--forest-deep), var(--forest));
+    color:#fff;
+    position:relative;
+  }
+  .detail-top .back-btn{
+    position:absolute; top:14px; right:14px;
+    background:rgba(255,255,255,0.12);
+    border:none; color:#fff; width:26px; height:26px; border-radius:50%;
+    cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center;
+  }
+  .detail-top .back-btn:hover{ background:rgba(255,255,255,0.22); }
+  .detail-block-tag{
+    font-family:'JetBrains Mono', monospace; font-size:10.5px; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--gold-soft); margin-bottom:6px;
+  }
+  .detail-top h2{ margin:0; font-size:21px; font-weight:600; line-height:1.25; padding-right:30px;}
+  .detail-top .binbinti{ font-size:13px; color:rgba(239,234,224,0.75); margin-top:3px; font-style:italic; font-family:'Fraunces',serif;}
+
+  .detail-body{ padding:18px 20px 20px; }
+  .dgrid{
+    display:grid; grid-template-columns:1fr 1fr; gap:14px 16px;
+    margin-bottom:16px;
+  }
+  .dfield label{
+    display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em;
+    color:var(--ink-soft); font-family:'JetBrains Mono', monospace; margin-bottom:4px;
+  }
+  .dfield .val{ font-size:14.5px; font-weight:600; color:var(--ink); }
+  .dfield .val.mono{ font-family:'JetBrains Mono', monospace; font-weight:500;}
+
+  .age-pill{
+    display:inline-flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+    background:var(--stone-dim); border-radius:10px; padding:9px 13px;
+    margin-bottom:16px;
+  }
+  .age-pill .num{ font-family:'Fraunces',serif; font-size:22px; font-weight:600; color:var(--forest-deep); }
+  .age-pill .lbl{ font-size:12px; color:var(--ink-soft); }
+  .status-chip{
+    font-size:10.5px; font-weight:600; color:#fff; padding:3px 9px; border-radius:100px;
+    letter-spacing:0.02em; font-family:'Inter',sans-serif;
+  }
+
+  .kavling-note{
+    background:var(--stone-dim);
+    border-left:3px solid var(--gold);
+    padding:10px 13px;
+    border-radius:0 8px 8px 0;
+    font-size:12px; color:var(--ink-soft); line-height:1.5; font-style:italic;
+    margin-bottom:16px;
+  }
+
+  .notes-box{
+    background:var(--stone-dim);
+    border-left:3px solid var(--gold);
+    padding:11px 13px;
+    border-radius:0 8px 8px 0;
+    font-size:13px; color:var(--ink); line-height:1.5;
+    margin-bottom:18px;
+  }
+  .notes-box strong{ display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--gold); margin-bottom:4px; font-family:'JetBrains Mono', monospace;}
+
+  .btn-row{ display:flex; gap:10px; }
+  .btn{
+    flex:1;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:12px 14px; border-radius:10px;
+    font-size:13.5px; font-weight:600; text-decoration:none;
+    cursor:pointer; border:1.5px solid transparent;
+    font-family:'Inter',sans-serif;
+    transition:transform .12s ease, filter .12s ease;
+  }
+  .btn:active{ transform:scale(0.97); }
+  .btn-primary{ background:var(--forest-deep); color:#fff; }
+  .btn-primary:hover{ filter:brightness(1.12); }
+  .btn-secondary{ background:#fff; border-color:var(--line); color:var(--ink); }
+  .btn-secondary:hover{ border-color:var(--forest-soft); }
+
+  /* ---------- MAP AREA ---------- */
+  #map-wrap{ flex:1; height:100%; position:relative; background:#dfe6de; }
+  #map{ width:100%; height:100%; }
+
+  .map-topbar{
+    position:absolute; top:16px; left:16px; right:16px; z-index:500;
+    display:none; /* shown on mobile only */
+    gap:10px;
+  }
+
+  .map-controls{
+    position:absolute; right:16px; bottom:28px; z-index:500;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .map-ctrl-btn{
+    width:42px; height:42px; border-radius:11px;
+    background:#fff; border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:var(--shadow); color:var(--forest-deep);
+    font-size:16px;
+  }
+  .map-ctrl-btn:hover{ background:var(--stone-dim); }
+  .map-ctrl-btn.active{
+    background:var(--forest-deep); color:#fff; border-color:var(--forest-deep);
+  }
+  .zone-rect{ cursor:default; transition:filter .1s ease; }
+  .leaflet-container.zone-edit-mode .zone-rect{ cursor:grab; filter:brightness(1.05); touch-action:none; }
+  .leaflet-container.zone-dragging{ cursor:grabbing !important; }
+  .leaflet-container.zone-dragging .zone-rect{ cursor:grabbing; }
+  .zone-highlight{
+    animation: zoneHighlightPulse 1.3s ease-in-out 2;
+  }
+  @keyframes zoneHighlightPulse{
+    0%, 100% { stroke-width:2; filter:brightness(1); }
+    50% { stroke-width:5; filter:brightness(1.35) drop-shadow(0 0 6px rgba(180,137,79,0.8)); }
+  }
+
+  .zone-toolbar{
+    position:absolute; top:16px; left:16px;
+    z-index:600;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:12px 14px;
+    display:flex; flex-direction:column; gap:9px;
+    max-width:92vw; width:400px;
+    max-height:calc(100% - 32px);
+    overflow-y:auto;
+    transition:opacity .18s ease, transform .18s ease;
+  }
+  .zt-header{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    cursor:pointer; user-select:none;
+  }
+  .zt-header-title{
+    font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase;
+    letter-spacing:0.08em; color:var(--ink-soft); display:flex; align-items:center; gap:7px;
+  }
+  .zt-header-title .dot{ width:6px; height:6px; border-radius:50%; background:var(--gold); }
+  .zt-collapse-btn{
+    border:1px solid var(--line); background:#fff; color:var(--ink-soft);
+    width:24px; height:24px; border-radius:50%; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:13px; flex:0 0 auto;
+    transition:transform .18s ease;
+  }
+  .zt-collapse-btn:hover{ background:var(--stone-dim); }
+  .zone-toolbar.zt-collapsed .zt-body{ display:none; }
+  .zone-toolbar.zt-collapsed{ width:auto; padding:9px 12px; }
+  .zone-toolbar.zt-collapsed .zt-collapse-btn{ transform:rotate(180deg); }
+  .zt-body{ display:flex; flex-direction:column; gap:9px; }
+  .zone-toolbar.zt-dragging{ width:auto; padding:9px 12px; }
+  .zone-toolbar.zt-dragging .zt-body{ display:none; }
+  .zt-drag-hint{
+    display:none; font-size:11.5px; color:var(--gold); font-style:italic; font-weight:600;
+  }
+  .zone-toolbar.zt-dragging .zt-drag-hint{ display:block; }
+  .zt-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .zt-row select{
+    flex:1; min-width:150px;
+    border:1.5px solid var(--line); border-radius:8px;
+    padding:8px 10px; font-size:13px; font-family:'Inter',sans-serif; color:var(--ink);
+    background:#fff; cursor:pointer;
+  }
+  .zt-row select:focus{ outline:none; border-color:var(--forest-soft); }
+  .zt-btn{
+    border:none; border-radius:8px; padding:8px 13px; font-size:12.5px; font-weight:600;
+    cursor:pointer; white-space:nowrap; font-family:'Inter',sans-serif;
+  }
+  .zt-btn-primary{ background:var(--forest-deep); color:#fff; }
+  .zt-btn-primary:hover{ filter:brightness(1.12); }
+  .zt-btn-secondary{ background:var(--gold); color:#fff; }
+  .zt-btn-secondary:hover{ filter:brightness(1.1); }
+  .zt-btn-danger{ background:#fbe7e3; color:var(--danger); }
+  .zt-btn-danger:hover{ background:#f6d2ca; }
+  .zt-btn-ghost{ background:var(--stone-dim); color:var(--ink); }
+  .zt-btn-ghost:hover{ background:var(--line); }
+  .zt-text{
+    flex:1; min-width:140px;
+    border:1.5px solid var(--line); border-radius:9px;
+    padding:8px 11px; font-size:13px; font-family:'Inter',sans-serif; color:var(--ink);
+    background:#fff;
+  }
+  .zt-text:focus{ outline:none; border-color:var(--forest-soft); }
+  .zt-group-label{
+    font-family:'JetBrains Mono', monospace; font-size:10.5px; text-transform:uppercase;
+    letter-spacing:0.08em; color:var(--gold-soft); margin:10px 0 4px;
+  }
+  .zt-row:first-of-type .zt-group-label{ margin-top:0; }
+  .zt-selected-label{ font-size:12.5px; color:var(--ink-soft); flex:1; min-width:140px; }
+  .zt-selected-label strong{ color:var(--ink); }
+  .zt-selected-label .zt-parent-tag{ font-style:italic; margin-left:4px; }
+  .zt-hint{ font-size:11px; color:var(--ink-soft); font-style:italic; line-height:1.4; }
+
+  .zone-handle{
+    width:14px; height:14px; border-radius:4px;
+    background:#fff; border:2.5px solid var(--gold);
+    box-shadow:0 2px 8px rgba(0,0,0,0.4);
+    cursor:nwse-resize;
+  }
+  .zone-handle.rotate{
+    width:18px; height:18px; border-radius:50%;
+    border-color:var(--forest-deep);
+    cursor:grab;
+    background:#fff;
+  }
+  .zone-handle.move{
+    width:30px; height:30px; border-radius:50%;
+    background:var(--forest-deep); color:#fff;
+    border:2.5px solid #fff;
+    box-shadow:0 3px 10px rgba(0,0,0,0.45);
+    cursor:grab;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .zone-handle.move:active{ cursor:grabbing; }
+
+  .ref-point-marker{
+    width:22px; height:22px; border-radius:50%;
+    background:#fff; border:3px solid var(--forest-deep);
+    box-shadow:0 2px 8px rgba(0,0,0,0.45);
+    cursor:default; position:relative;
+  }
+  .ref-point-marker::after{
+    content:''; position:absolute; top:50%; left:50%;
+    width:6px; height:6px; border-radius:50%;
+    background:var(--forest-deep); transform:translate(-50%,-50%);
+  }
+
+  @media (max-width:860px){
+    .zone-toolbar{ top:78px; left:16px; width:calc(100vw - 32px); max-height:calc(100% - 94px); }
+  }
+
+  .map-legend{
+    position:absolute; left:16px; bottom:20px; z-index:500;
+    background:rgba(250,248,243,0.92);
+    backdrop-filter:blur(6px);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:11px 14px;
+    font-size:12px;
+    box-shadow:var(--shadow);
+  }
+  .map-legend .row{ display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+  .map-legend .row:last-child{ margin-bottom:0; }
+  .map-legend .sw{ width:10px; height:10px; border-radius:50%; }
+  .map-legend .legend-hint{
+    margin-top:8px; padding-top:8px; border-top:1px dashed var(--line);
+    font-size:10.5px; color:var(--ink-soft); font-style:italic; max-width:180px;
+  }
+
+  .leaflet-popup-content-wrapper{ border-radius:12px; }
+  .leaflet-popup-content{ font-family:'Inter',sans-serif; margin:12px 14px; }
+  .popup-name{ font-family:'Fraunces',serif; font-weight:600; font-size:14px; margin-bottom:2px;}
+  .popup-sub{ font-size:11.5px; color:var(--ink-soft); }
+
+  /* marker fasilitas/landmark — bentuk lencana persegi, beda dari teardrop makam */
+  .facility-marker{
+    width:26px; height:26px; border-radius:7px 7px 7px 2px;
+    display:flex; align-items:center; justify-content:center;
+    border:2px solid #fff;
+    box-shadow:0 2px 8px rgba(0,0,0,0.4);
+    transform:rotate(-45deg);
+  }
+  .facility-marker svg{ transform:rotate(45deg); }
+
+  /* custom marker */
+  .grave-marker{ position:relative; width:26px; height:26px; }
+  .grave-marker .core{
+    width:14px; height:14px; border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg);
+    position:absolute; top:6px; left:6px;
+    border:2px solid #fff;
+    box-shadow:0 2px 6px rgba(0,0,0,0.35);
+  }
+  .grave-marker.selected .core{
+    width:16px; height:16px; top:5px; left:5px;
+  }
+  .pulse-ring{
+    position:absolute; top:50%; left:50%; width:14px; height:14px;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    border:2px solid var(--gold);
+    animation:pulse 1.6s ease-out infinite;
+  }
+  @keyframes pulse{
+    0%{ width:14px; height:14px; opacity:0.9; }
+    100%{ width:46px; height:46px; opacity:0; }
+  }
+  .grave-marker.moving{ cursor:grab; }
+  .grave-marker.moving .core{
+    width:16px; height:16px; top:5px; left:5px;
+    box-shadow:0 3px 10px rgba(0,0,0,0.45);
+  }
+  .move-ring{
+    position:absolute; top:50%; left:50%; width:34px; height:34px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    border:2px dashed var(--gold);
+    animation:spin 3.5s linear infinite;
+    background:rgba(180,137,79,0.10);
+  }
+  @keyframes spin{ to{ transform:translate(-50%,-50%) rotate(360deg); } }
+
+  .move-banner{
+    display:flex; align-items:center; gap:10px;
+    background:linear-gradient(120deg, rgba(180,137,79,0.14), rgba(180,137,79,0.05));
+    border:1.5px dashed var(--gold);
+    border-radius:10px;
+    padding:10px 12px;
+    margin-bottom:16px;
+    font-size:12.5px; color:var(--ink);
+  }
+  .move-banner svg{ flex:0 0 auto; color:var(--gold); }
+
+  .coord-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--stone-dim); border-radius:10px;
+    padding:9px 12px; margin-bottom:14px;
+    font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--ink-soft);
+  }
+  .coord-row .coord-val{ color:var(--ink); font-weight:600; }
+  .coord-copy{
+    border:none; background:transparent; color:var(--forest-soft); cursor:pointer;
+    font-size:11.5px; font-weight:600; font-family:'Inter',sans-serif;
+  }
+  .coord-copy:hover{ text-decoration:underline; }
+
+  .btn-move{
+    width:100%; margin-bottom:10px;
+    background:#fff; border:1.5px solid var(--gold);
+    color:var(--gold);
+  }
+  .btn-move.active{
+    background:var(--gold); color:#fff; border-color:var(--gold);
+  }
+  .btn-move:hover{ filter:brightness(1.05); }
+
+  .toast{
+    position:fixed; left:50%; bottom:26px; transform:translate(-50%, 20px);
+    background:var(--forest-deep); color:#fff;
+    font-size:13px; font-weight:500;
+    padding:11px 18px; border-radius:100px;
+    box-shadow:var(--shadow);
+    opacity:0; pointer-events:none;
+    transition:opacity .22s ease, transform .22s ease;
+    z-index:2000;
+    max-width:86vw; text-align:center;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%, 0); }
+
+  .leaflet-tooltip.zone-label{
+    background:transparent; border:none; box-shadow:none;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px; font-weight:700; letter-spacing:0.06em;
+    color:var(--ink); text-shadow:
+      -1px -1px 0 rgba(255,255,255,0.85), 1px -1px 0 rgba(255,255,255,0.85),
+      -1px 1px 0 rgba(255,255,255,0.85), 1px 1px 0 rgba(255,255,255,0.85);
+    padding:0;
+  }
+  .leaflet-tooltip.zone-label::before{ display:none; }
+  .zone-status-dot{
+    display:inline-block; width:8px; height:8px; border-radius:50%;
+    margin-left:5px; vertical-align:middle;
+    border:1.5px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,0.25);
+  }
+
+  /* ---------- Mobile ---------- */
+  .mobile-only{ display:none; }
+  @media (max-width: 860px){
+    #panel{ display:none; }
+    .mobile-only{ display:block; }
+    .map-topbar{ display:flex; }
+    #map-wrap{ width:100vw; }
+    .map-legend{ display:none; }
+    .map-controls{ bottom:calc(30vh + 16px); }
+  }
+
+  /* Bottom sheet */
+  #sheet{
+    position:fixed; left:0; right:0; bottom:0;
+    height:30vh; max-height:88vh;
+    background:var(--paper);
+    border-radius:20px 20px 0 0;
+    box-shadow:0 -8px 30px rgba(23,48,31,0.28);
+    z-index:900;
+    display:none;
+    flex-direction:column;
+    transition:height .28s cubic-bezier(.2,.8,.2,1);
+    touch-action:none;
+  }
+  #sheet.open{ display:flex; }
+  .sheet-handle-wrap{
+    padding:10px 0 6px; display:flex; justify-content:center; cursor:grab;
+    flex:0 0 auto;
+  }
+  .sheet-handle{ width:38px; height:4px; border-radius:3px; background:var(--line); }
+  .sheet-header{
+    padding:0 18px 10px; flex:0 0 auto;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .sheet-header h3{ margin:0; font-size:15px; font-family:'Fraunces',serif; font-weight:600;}
+  .sheet-body{ flex:1; overflow-y:auto; padding:0 14px 24px; -webkit-overflow-scrolling:touch;}
+
+  .search-box.mobile{
+    flex:1; background:#fff; box-shadow:var(--shadow);
+  }
+  .filter-fab{
+    width:44px; height:44px; border-radius:12px; background:#fff;
+    border:1px solid var(--line); box-shadow:var(--shadow);
+    display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+    cursor:pointer; color:var(--forest-deep); font-size:16px;
+  }
+  .mobile-chip-row{
+    display:none; gap:8px; padding:10px 14px 0; overflow-x:auto;
+  }
+  .mobile-chip-row.show{ display:flex; }
+
+  @media (max-width:860px){
+    .grave-item{ padding:12px 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .pulse-ring{ animation:none; opacity:0; }
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ LEFT PANEL (desktop) ============ -->
+  <div id="panel">
+    <div class="panel-header">
+      <div class="eyebrow"><span class="dot"></span>NAVIGASI PEZIARAH</div>
+      <h1>TPU Pandu</h1>
+      <p>Peta UPTD I &middot; Kota Bandung</p>
+    </div>
+
+    <div class="search-wrap">
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Cari nama, bin/binti, no. kavling, no. registrasi, atau NIK…" autocomplete="off">
+        <button class="clear-btn" id="clearBtn" style="display:none;">&times;</button>
+      </div>
+    </div>
+
+    <div class="chips" id="chipRow"></div>
+
+    <div class="year-filter" id="yearFilterDesktop">
+      <label>Tahun Meninggal</label>
+      <div class="year-filter-row">
+        <input type="number" id="yearFromDesktop" placeholder="Dari" min="1900" max="2100">
+        <span class="year-sep">&ndash;</span>
+        <input type="number" id="yearToDesktop" placeholder="Sampai" min="1900" max="2100">
+        <button class="year-reset" id="yearResetDesktop" title="Hapus filter tahun">&times;</button>
+      </div>
+    </div>
+
+    <div class="result-meta">
+      <span id="resultCount">0 makam ditemukan</span>
+      <span id="resultHint"></span>
+    </div>
+
+    <div class="scroll-area" id="scrollArea"></div>
+  </div>
+
+  <!-- ============ MAP ============ -->
+  <div id="map-wrap">
+
+    <!-- mobile floating search -->
+    <div class="map-topbar">
+      <div class="search-box mobile">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInputMobile" type="text" placeholder="Cari nama, no. registrasi, NIK…" autocomplete="off">
+      </div>
+      <div class="filter-fab" id="filterFab">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+      </div>
+    </div>
+    <div class="mobile-chip-row" id="mobileChipRow"></div>
+    <div class="year-filter mobile-year-row" id="yearFilterMobile">
+      <label>Tahun Meninggal</label>
+      <div class="year-filter-row">
+        <input type="number" id="yearFromMobile" placeholder="Dari" min="1900" max="2100">
+        <span class="year-sep">&ndash;</span>
+        <input type="number" id="yearToMobile" placeholder="Sampai" min="1900" max="2100">
+        <button class="year-reset" id="yearResetMobile" title="Hapus filter tahun">&times;</button>
+      </div>
+    </div>
+
+    <div class="zone-toolbar" id="zoneToolbar" style="display:none;">
+      <div class="zt-header" id="ztHeader">
+        <span class="zt-header-title"><span class="dot"></span>Kelola Area Blok</span>
+        <span class="zt-drag-hint" id="ztDragHint">menggeser…</span>
+        <button class="zt-collapse-btn" id="ztCollapseBtn" title="Ciutkan/lebarkan panel">&#8963;</button>
+      </div>
+      <div class="zt-body" id="ztBody">
+      <div class="zt-group-label">Blok Utama aktif</div>
+      <div class="zt-row">
+        <input list="ztMainList" id="ztMainInput" class="zt-text" placeholder="Pilih Blok Utama atau ketik nama baru…" autocomplete="off">
+        <datalist id="ztMainList"></datalist>
+        <button class="zt-btn zt-btn-primary" id="ztAddBtn" title="Menambahkan poligon area baru dengan nama di atas. Jika nama belum ada, sebuah Blok Utama baru akan dibuat.">+ Tambah Blok Utama</button>
+      </div>
+      <div class="zt-row">
+        <input type="text" id="ztMainRenameInput" class="zt-text" placeholder="Nama baru untuk Blok Utama aktif…" autocomplete="off">
+        <button class="zt-btn zt-btn-ghost" id="ztMainRenameBtn">Ubah Nama Blok Utama</button>
+      </div>
+
+      <div class="zt-group-label">Sub-Blok dari Blok Utama aktif</div>
+      <div class="zt-row">
+        <input type="text" id="ztSubAddInput" class="zt-text" placeholder="Nama sub-blok baru (kosongkan = otomatis)…" autocomplete="off">
+        <button class="zt-btn zt-btn-secondary" id="ztAddSubBtn">+ Tambah Sub-Blok</button>
+      </div>
+      <div class="zt-row">
+        <select id="ztSubSelect"><option value="">— tidak ada sub-blok —</option></select>
+        <input type="text" id="ztSubRenameInput" class="zt-text" placeholder="Nama baru untuk sub-blok…" autocomplete="off">
+        <button class="zt-btn zt-btn-ghost" id="ztSubRenameBtn">Ubah Nama Sub-Blok</button>
+      </div>
+
+      <div class="zt-row" id="ztSelectedRow" style="display:none;">
+        <span class="zt-selected-label">Area terpilih: <strong id="ztSelectedName"></strong><span id="ztSelectedParent"></span></span>
+        <button class="zt-btn zt-btn-danger" id="ztDeleteBtn">Hapus</button>
+        <button class="zt-btn zt-btn-ghost" id="ztDoneBtn">Selesai</button>
+      </div>
+      <div class="zt-row" id="ztStatusRow" style="display:none;">
+        <span class="zt-selected-label">Status ketersediaan:</span>
+        <select id="ztStatusSelect">
+          <option value="Terisi (Aktif)">Terisi (Aktif)</option>
+          <option value="Kosong (Tersedia)">Kosong (Tersedia)</option>
+          <option value="Tersedia untuk Makam Tumpuk">Tersedia untuk Makam Tumpuk</option>
+        </select>
+        <button class="zt-btn zt-btn-primary" id="ztStatusSaveBtn">Simpan Status</button>
+      </div>
+      <div class="zt-hint">Klik area = pilih (posisi tetap) &middot; tarik panah tengah = geser &middot; tarik kotak sudut = ubah ukuran &middot; tarik lingkaran emas = putar</div>
+      </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="map-controls">
+      <div class="map-ctrl-btn" id="editZoneBtn" title="Kelola area blok (tambah/geser/ubah ukuran/putar/hapus)">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+      </div>
+      <div class="map-ctrl-btn" id="zoomInBtn" title="Perbesar">+</div>
+      <div class="map-ctrl-btn" id="zoomOutBtn" title="Perkecil">&minus;</div>
+      <div class="map-ctrl-btn" id="resetBtn" title="Reset tampilan">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      </div>
+    </div>
+
+    <div class="map-legend">
+      <div id="legendBlockRows"></div>
+      <div class="row"><span class="sw" style="background:#4A5568;border-radius:3px;"></span>Fasilitas / Landmark</div>
+      <div class="legend-hint">Tekan ikon panah untuk geser area blok</div>
+    </div>
+  </div>
+
+  <!-- ============ MOBILE BOTTOM SHEET ============ -->
+  <div id="sheet">
+    <div class="sheet-handle-wrap" id="sheetHandle"><div class="sheet-handle"></div></div>
+    <div class="sheet-header">
+      <h3 id="sheetTitle">Hasil pencarian</h3>
+      <span class="clear-btn" id="sheetClose" style="display:flex;">&times;</span>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module">
+/* =========================================================
+   AMBIL DATA DARI BACKEND LARAVEL
+   Ganti API_BASE & TPU_ID sesuai environment Anda.
+   Karena pakai "await" di level atas, SEMUA kode di bawah ini
+   otomatis menunggu sampai data ini selesai diambil dulu.
+   ========================================================= */
+const API_BASE = 'http://localhost:8000/api';
+const TPU_ID = 1; // ganti sesuai id TPU yang mau ditampilkan
+
+let CENTER = [-6.8988, 107.5925];
+let DEFAULT_ZOOM = 17;
+let ZONES = [];
+let GRAVE_DATA = [];
+let FACILITY_DATA = [];
+
+try {
+  const res = await fetch(`${API_BASE}/tpu/${TPU_ID}/peta-data`);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const json = await res.json();
+
+  CENTER = json.tpu.center;
+  DEFAULT_ZOOM = json.tpu.defaultZoom;
+  ZONES = json.zones;
+  GRAVE_DATA = json.graves;
+  FACILITY_DATA = json.facilities;
+
+  console.log('Data peta berhasil dimuat dari API:', json);
+} catch (err) {
+  console.error('Gagal mengambil data dari API Laravel, peta akan kosong:', err);
+  alert('Gagal memuat data peta dari server. Cek console (F12) untuk detail error.');
+}
+
+/* =========================================================
+   MOCK DATA LAMA — sudah tidak dipakai lagi (diganti fetch di atas),
+   disimpan sebagai referensi/fallback kalau sewaktu-waktu dibutuhkan.
+   ========================================================= */
+const MOCK_GRAVE_DATA = [
+  {
+    id: "1",
+    noRegistrasi: "REG-2018-1037",
+    fullName: "Ahmad Subarkah",
+    nik: "3273011708450001",
+    binBinti: "Bin Usman",
+    birthDate: "1945-08-17",
+    meninggalTanggal: "2018-05-12",
+    dimakamkanTanggal: "2018-05-13",
+    alamatJalan: "Jl. Pandu Raya No. 12",
+    kelurahan: "Arjuna",
+    kecamatan: "Cicendo",
+    block: "Blok CB",
+    plotNumber: "CB-04/12",
+    statusPetak: "Terisi (Aktif Her-Registrasi)"
+  },
+  {
+    id: "2",
+    noRegistrasi: "REG-2020-1074",
+    fullName: "Siti Rohaya",
+    nik: "3273025302520002",
+    binBinti: "Binti Sulaeman",
+    birthDate: "1952-02-03",
+    meninggalTanggal: "2020-11-27",
+    dimakamkanTanggal: "2020-11-28",
+    alamatJalan: "Jl. Pandu Raya No. 12",
+    kelurahan: "Arjuna",
+    kecamatan: "Cicendo",
+    block: "Blok CB",
+    plotNumber: "CB-04/15",
+    statusPetak: "Terisi (Aktif Her-Registrasi)"
+  },
+  {
+    id: "3",
+    noRegistrasi: "REG-2022-1111",
+    fullName: "Yohanes Kurniawan",
+    nik: "3273032106600003",
+    binBinti: "Putra Ignatius Kurnia",
+    birthDate: "1960-06-21",
+    meninggalTanggal: "2022-01-09",
+    dimakamkanTanggal: "2022-01-12",
+    alamatJalan: "Jl. Pajajaran No. 45",
+    kelurahan: "Pamoyanan",
+    kecamatan: "Cicendo",
+    block: "Blok CA",
+    plotNumber: "CA-02/07",
+    statusPetak: "Terisi (Aktif Her-Registrasi)"
+  },
+  {
+    id: "4",
+    noRegistrasi: "REG-2015-1148",
+    fullName: "Maria Christina Wijaya",
+    nik: "3273040112380004",
+    binBinti: "Putri Bernardus Wijaya",
+    birthDate: "1938-12-01",
+    meninggalTanggal: "2015-09-30",
+    dimakamkanTanggal: "2015-10-02",
+    alamatJalan: "Jl. Sukajadi No. 88",
+    kelurahan: "Sukagalih",
+    kecamatan: "Sukajadi",
+    block: "Blok CA",
+    plotNumber: "CA-02/03",
+    statusPetak: "Terisi (Aktif Her-Registrasi)"
+  },
+  {
+    id: "5",
+    noRegistrasi: "REG-1999-1185",
+    fullName: "R.A. Soekanto Prawiradinata",
+    nik: "3273051403210005",
+    binBinti: "Bin R. Prawiradinata",
+    birthDate: "1921-03-14",
+    meninggalTanggal: "1999-07-22",
+    dimakamkanTanggal: "1999-07-23",
+    alamatJalan: "Jl. Braga No. 5",
+    kelurahan: "Braga",
+    kecamatan: "Sumur Bandung",
+    block: "Pemakaman Belanda (Ereveld)",
+    plotNumber: "ER-01/01",
+    statusPetak: "Terisi (Aktif Her-Registrasi)"
+  },
+  {
+    id: "6",
+    noRegistrasi: "REG-2005-1222",
+    fullName: "Halimah Kartadipraja",
+    nik: "3273060510300006",
+    binBinti: "Binti Kartadipraja",
+    birthDate: "1930-10-05",
+    meninggalTanggal: "2005-04-18",
+    dimakamkanTanggal: "2005-04-19",
+    alamatJalan: "Jl. Pasteur No. 20",
+    kelurahan: "Pasteur",
+    kecamatan: "Sukajadi",
+    block: "Blok T",
+    plotNumber: "T-07/22",
+    statusPetak: "Terisi (Aktif Her-Registrasi)"
+  },
+  {
+    id: "7",
+    noRegistrasi: "REG-2021-1259",
+    fullName: "Bambang Hermawan",
+    nik: "3273072901550007",
+    binBinti: "Bin Wirasasmita",
+    birthDate: "1955-01-29",
+    meninggalTanggal: "2021-08-15",
+    dimakamkanTanggal: "2021-08-16",
+    alamatJalan: "Jl. Cihampelas No. 33",
+    kelurahan: "Cipedes",
+    kecamatan: "Sukajadi",
+    block: "Blok CB",
+    plotNumber: "CB-09/03",
+    statusPetak: "Terisi (Aktif Her-Registrasi)"
+  },
+  {
+    id: "8",
+    noRegistrasi: "REG-2019-1296",
+    fullName: "Fransiskus Xaverius Sutanto",
+    nik: "3273080905470008",
+    binBinti: "Putra Albertus Sutanto",
+    birthDate: "1947-05-09",
+    meninggalTanggal: "2019-12-24",
+    dimakamkanTanggal: "2019-12-27",
+    alamatJalan: "Jl. Dago No. 60",
+    kelurahan: "Dago",
+    kecamatan: "Coblong",
+    block: "Blok CA",
+    plotNumber: "CA-05/11",
+    statusPetak: "Terisi (Aktif Her-Registrasi)"
+  },
+  {
+    id: "9",
+    noRegistrasi: "REG-2010-1333",
+    fullName: "Prof. Dr. Iskandar Muda Nasution",
+    nik: "3273091111280009",
+    binBinti: "Bin H. Nasution",
+    birthDate: "1928-11-11",
+    meninggalTanggal: "2010-03-02",
+    dimakamkanTanggal: "2010-03-03",
+    alamatJalan: "Jl. Ganesha No. 10",
+    kelurahan: "Lebak Siliwangi",
+    kecamatan: "Coblong",
+    block: "Pemakaman Belanda (Ereveld)",
+    plotNumber: "ER-01/04",
+    statusPetak: "Terisi (Aktif Her-Registrasi)"
+  },
+  {
+    id: "10",
+    noRegistrasi: "REG-2023-1370",
+    fullName: "Euis Nuraeni",
+    nik: "3273101907630010",
+    binBinti: "Binti Ma'mun",
+    birthDate: "1963-07-19",
+    meninggalTanggal: "2023-02-28",
+    dimakamkanTanggal: "2023-03-01",
+    alamatJalan: "Jl. Pandu Raya No. 7",
+    kelurahan: "Arjuna",
+    kecamatan: "Cicendo",
+    block: "Blok T",
+    plotNumber: "T-11/08",
+    statusPetak: "Terisi (Aktif Her-Registrasi)"
+  }
+];
+
+const BLOCK_META = {
+  "Blok T":                       { color: "var(--blok-t)",   hex: "#A88F2E", short: "BLOK T",   icon: "T" },
+  "Blok CB":                      { color: "var(--blok-cb)",  hex: "#4E93A3", short: "BLOK CB",  icon: "CB" },
+  "Blok CA":                      { color: "var(--blok-ca)",  hex: "#8266A8", short: "BLOK CA",  icon: "CA" },
+  "Pemakaman Belanda (Ereveld)":  { color: "var(--ereveld)",  hex: "#C77F63", short: "EREVELD",  icon: "E" }
+};
+
+/* CATEGORIES sekarang dihitung dinamis (lihat getCategories() di bawah, setelah
+   ZONES tersedia) supaya chip filter otomatis mengikuti Blok Utama yang
+   ditambah/diubah namanya oleh Admin — tidak lagi daftar statis. */
+
+/* Palet warna otomatis untuk Blok Utama baru yang dibuat Admin di luar 4 blok bawaan */
+const AUTO_BLOCK_PALETTE = ["#5B8C5A", "#3D7A9E", "#B58A3D", "#8A5B8C", "#C0567B", "#4F7A65", "#7C6B45", "#5A6F94", "#9C5A3C", "#6B7A3D"];
+let autoBlockColorIdx = 0;
+/* Membuat entri BLOCK_META untuk nama Blok Utama baru (auto warna & inisial),
+   dipanggil saat Admin menambah/mengubah nama Blok Utama yang belum dikenal. */
+function deriveBlockIcon(name){
+  const words = name.replace(/\(.*?\)/g, '').trim().split(/\s+/).filter(Boolean);
+  return words.length > 1 ? (words[0][0] + (words[1][0] || '')).toUpperCase() : name.slice(0, 2).toUpperCase();
+}
+function assignBlockMeta(name){
+  if (BLOCK_META[name]) return BLOCK_META[name];
+  const hex = AUTO_BLOCK_PALETTE[autoBlockColorIdx % AUTO_BLOCK_PALETTE.length];
+  autoBlockColorIdx++;
+  const icon = deriveBlockIcon(name);
+  const meta = { color: hex, hex, short: name.toUpperCase(), icon };
+  BLOCK_META[name] = meta;
+  return meta;
+}
+
+/* PATCH INTEGRASI API: siapkan warna/ikon otomatis untuk SETIAP nama Blok Utama
+   yang datang dari database (lewat fetch di atas), bukan cuma 4 nama contoh
+   di atas. Ditaruh di SINI (bukan di atas) karena assignBlockMeta() butuh
+   AUTO_BLOCK_PALETTE & autoBlockColorIdx yang baru selesai diinisialisasi. */
+ZONES.filter(z => !z.parent).forEach(z => assignBlockMeta(z.name));
+
+// CENTER & DEFAULT_ZOOM sudah dideklarasikan & diisi di bagian fetch API di atas
+
+/* =========================================================
+   AREA BLOK — polygon (bukan lagi persegi kaku), sehingga bisa:
+   digeser, diperbesar/dikecilkan (tarik sudut), diputar,
+   ditambah baru, dan dihapus. Semua murni di browser (state array).
+   ========================================================= */
+let zoneIdCounter = 0;
+function makeZone(name, south, north, west, east, parent){
+  zoneIdCounter++;
+  const corners = [
+    { lat: south, lng: west },
+    { lat: south, lng: east },
+    { lat: north, lng: east },
+    { lat: north, lng: west }
+  ];
+  return {
+    id: 'zone-' + zoneIdCounter,
+    name,
+    // Hierarki multi-poligon: null = Blok Utama, string = nama Blok induk
+    // (mis. "Blok CB") kalau zona ini adalah sub-blok/cabang (mis. "Blok CB 1")
+    parent: parent || null,
+    corners,
+    // status ketersediaan lahan Blok (UC-06): Terisi (Aktif) | Kosong (Tersedia) | Tersedia untuk Makam Tumpuk
+    statusKetersediaan: "Terisi (Aktif)"
+  };
+}
+
+const MOCK_ZONES = [
+  makeZone("Blok T",                      -6.9010, -6.8965, 107.5905, 107.5916),
+  makeZone("Pemakaman Belanda (Ereveld)", -6.8985, -6.8965, 107.5916, 107.5928),
+  makeZone("Blok CB",                     -6.9010, -6.8985, 107.5916, 107.5928),
+  makeZone("Blok CA",                     -6.9010, -6.8965, 107.5928, 107.5945)
+];
+// ZONES sudah dideklarasikan & diisi dari hasil fetch API di bagian atas script
+
+/* Nama Blok Utama (top-level) — dihitung dinamis dari ZONES (bukan daftar statis
+   lagi), supaya Blok Utama baru yang ditambah/diubah namanya oleh Admin (FR-19
+   fleksibel) langsung ikut muncul di dropdown, filter chip, dan legenda peta. */
+function getMainBlockNames(){
+  const seen = [];
+  ZONES.forEach(z => { if (!z.parent && !seen.includes(z.name)) seen.push(z.name); });
+  return seen;
+}
+function isMainBlockName(name){ return getMainBlockNames().includes(name); }
+
+/* Daftar kategori untuk chip filter pencarian: "Semua Blok" + seluruh Blok Utama saat ini */
+function getCategories(){ return ["Semua Blok", ...getMainBlockNames()]; }
+
+/* Sub-blok (anak) dari sebuah Blok Utama tertentu */
+function getSubZonesOf(parentName){ return ZONES.filter(z => z.parent === parentName); }
+
+/* Menelusuri nama Blok Utama dari nama zona apa pun (sub-blok atau bukan) —
+   dipakai untuk filter kategori & pewarnaan agar sub-blok ikut Blok induknya */
+function getParentBlockName(name){
+  const zone = ZONES.find(z => z.name === name);
+  if (zone && zone.parent) return zone.parent;
+  return name;
+}
+
+/* Meta warna/ikon Blok, dengan fallback ke Blok induk untuk sub-blok */
+function resolveBlockMeta(name){
+  return BLOCK_META[name] || BLOCK_META[getParentBlockName(name)] || { hex: '#8a8676', color: '#8a8676', icon: '?', short: 'BLOK' };
+}
+
+const STATUS_BLOK_META = {
+  "Terisi (Aktif)":               { color: "#4A5568", label: "Terisi (Aktif)" },
+  "Kosong (Tersedia)":            { color: "#8a8676", label: "Kosong (Tersedia)" },
+  "Tersedia untuk Makam Tumpuk":  { color: "#A5453A", label: "Makam Tumpuk" }
+};
+
+const PLOT_PREFIX = {
+  "Blok T": "T",
+  "Blok CB": "CB",
+  "Blok CA": "CA",
+  "Pemakaman Belanda (Ereveld)": "ER"
+};
+
+/* ---- Util geometri (ray-casting, centroid, rotasi 2D) ---- */
+function polyCentroid(corners){
+  let latSum = 0, lngSum = 0;
+  corners.forEach(c => { latSum += c.lat; lngSum += c.lng; });
+  return { lat: latSum / corners.length, lng: lngSum / corners.length };
+}
+function rotatePoint(p, center, angle){
+  const dx = p.lng - center.lng, dy = p.lat - center.lat;
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  return { lat: center.lat + dx*sin + dy*cos, lng: center.lng + dx*cos - dy*sin };
+}
+function pointInPolygon(lat, lng, corners){
+  let inside = false;
+  for (let i = 0, j = corners.length - 1; i < corners.length; j = i++){
+    const xi = corners[i].lng, yi = corners[i].lat;
+    const xj = corners[j].lng, yj = corners[j].lat;
+    const intersect = ((yi > lat) !== (yj > lat)) &&
+      (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+function findZoneForPoint(lat, lng){
+  for (let i = ZONES.length - 1; i >= 0; i--){
+    if (pointInPolygon(lat, lng, ZONES[i].corners)) return ZONES[i];
+  }
+  return null;
+}
+function cornersToLatLngs(corners){ return corners.map(c => [c.lat, c.lng]); }
+
+/* =========================================================
+   STATE
+   ========================================================= */
+let state = {
+  query: "",
+  activeCategory: "Semua Blok",
+  selectedId: null,
+  sheetMode: "list", // 'list' | 'detail'
+  manageMode: false,   // true = panel kelola area blok terbuka (FR-19)
+  zoneEditId: null,    // id zona yang sedang dipilih untuk diedit (handle tampil)
+  yearFrom: null,      // filter rentang tahun meninggal (dari)
+  yearTo: null         // filter rentang tahun meninggal (sampai)
+};
+
+/* =========================================================
+   MAP INIT
+   ========================================================= */
+const map = L.map('map', { zoomControl:false, attributionControl:true }).setView(CENTER, DEFAULT_ZOOM);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 20,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
+
+/* ---- Render polygon zona ---- */
+const zoneLayers = {};
+
+function zoneShortLabel(zone){
+  // Label di peta memakai nama Blok/Sub-Blok persis seperti yang diketik Admin,
+  // bebas panjang & karakter apa pun — tidak lagi dipaksa jadi inisial 2 huruf.
+  return zone.name;
+}
+
+function zoneTooltipContent(zone){
+  const label = zoneShortLabel(zone);
+  const statusMeta = STATUS_BLOK_META[zone.statusKetersediaan] || STATUS_BLOK_META["Terisi (Aktif)"];
+  return `${label}<span class="zone-status-dot" style="background:${statusMeta.color}" title="${statusMeta.label}"></span>`;
+}
+
+function zonePathStyle(zone){
+  const meta = resolveBlockMeta(zone.parent || zone.name);
+  const isTumpuk = zone.statusKetersediaan === "Tersedia untuk Makam Tumpuk";
+  return {
+    color: isTumpuk ? '#A5453A' : meta.hex,
+    weight: zone.parent ? 1.5 : (isTumpuk ? 3 : 2),
+    dashArray: isTumpuk ? '3 3' : (zone.parent ? '2 3' : '6 5'),
+    fillColor: meta.hex,
+    fillOpacity: zone.parent ? 0.26 : 0.16,
+    opacity: isTumpuk ? 0.85 : (zone.parent ? 0.75 : 0.55)
+  };
+}
+
+function renderZonePolygon(zone){
+  let layer = zoneLayers[zone.id];
+  if (!layer){
+    layer = L.polygon(cornersToLatLngs(zone.corners), {
+      ...zonePathStyle(zone),
+      interactive: true, className: 'zone-rect'
+    }).addTo(map);
+    layer.bindTooltip(zoneTooltipContent(zone), {
+      permanent: true, direction: 'center', className: 'zone-label', opacity: 0.9
+    });
+    const el = layer.getElement ? layer.getElement() : layer._path;
+    if (el) {
+      el.addEventListener('pointerdown', (e) => {
+        if (!state.manageMode) return;
+        // Klik pada badan area HANYA memilih (tampilan tetap diam/stay) —
+        // menggeser posisinya sekarang khusus lewat handle panah di tengah,
+        // supaya klik sekadar untuk memilih tidak sengaja ikut menggeser area.
+        e.stopPropagation();
+        if (state.zoneEditId !== zone.id) selectZoneForEdit(zone.id);
+      });
+    }
+    zoneLayers[zone.id] = layer;
+  } else {
+    layer.setLatLngs(cornersToLatLngs(zone.corners));
+    layer.setStyle(zonePathStyle(zone));
+    const tt = layer.getTooltip();
+    if (tt) {
+      const c = polyCentroid(zone.corners);
+      tt.setLatLng([c.lat, c.lng]);
+      tt.setContent(zoneTooltipContent(zone));
+    }
+  }
+  return layer;
+}
+ZONES.forEach(renderZonePolygon);
+
+/* ---- Geser badan zona (translate, Pointer Events lintas perangkat) ---- */
+function startZoneBodyDrag(zone, e){
+  e.preventDefault();
+  e.stopPropagation();
+  map.dragging.disable();
+  map.getContainer().classList.add('zone-dragging');
+  const startLatLng = map.mouseEventToLatLng(e);
+  const startCorners = zone.corners.map(c => ({...c}));
+
+  function onMove(ev){
+    const ll = map.mouseEventToLatLng(ev);
+    const dLat = ll.lat - startLatLng.lat, dLng = ll.lng - startLatLng.lng;
+    zone.corners = startCorners.map(c => ({ lat: c.lat + dLat, lng: c.lng + dLng }));
+    renderZonePolygon(zone);
+    updateCornerHandlePositions(zone);
+    repositionRotateHandleLite(zone);
+  }
+  function onUp(){
+    window.removeEventListener('pointermove', onMove);
+    map.dragging.enable();
+    map.getContainer().classList.remove('zone-dragging');
+    renderLandmarkMarker(zone);
+    reclassifyAllGraves();
+  }
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp, { once: true });
+}
+
+/* ---- Handle edit: geser (tengah) + sudut (resize) + putar (rotate) ---- */
+let handleLayers = { move: null, corners: [], rotate: null, rotateLine: null };
+
+function buildHandleIcon(kind){
+  const inner = kind === 'move'
+    ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>`
+    : '';
+  return L.divIcon({ className:'', html:`<div class="zone-handle ${kind}">${inner}</div>`, iconSize:[kind==='move'?30:20, kind==='move'?30:20], iconAnchor:[kind==='move'?15:10, kind==='move'?15:10] });
+}
+
+function clearHandles(){
+  if (handleLayers.move) { map.removeLayer(handleLayers.move); handleLayers.move = null; }
+  handleLayers.corners.forEach(m => map.removeLayer(m));
+  handleLayers.corners = [];
+  if (handleLayers.rotate) { map.removeLayer(handleLayers.rotate); handleLayers.rotate = null; }
+  if (handleLayers.rotateLine) { map.removeLayer(handleLayers.rotateLine); handleLayers.rotateLine = null; }
+}
+
+function updateCornerHandlePositions(zone){
+  zone.corners.forEach((c, idx) => {
+    if (handleLayers.corners[idx]) handleLayers.corners[idx].setLatLng([c.lat, c.lng]);
+  });
+  if (handleLayers.move) {
+    const c = polyCentroid(zone.corners);
+    handleLayers.move.setLatLng([c.lat, c.lng]);
+  }
+}
+
+function rotateHandleLatLng(zone){
+  const center = polyCentroid(zone.corners);
+  const c0 = zone.corners[0];
+  return { lat: center.lat + (c0.lat - center.lat) * 1.6, lng: center.lng + (c0.lng - center.lng) * 1.6 };
+}
+
+function repositionRotateHandleLite(zone){
+  if (!handleLayers.rotate) return;
+  const center = polyCentroid(zone.corners);
+  const pos = rotateHandleLatLng(zone);
+  handleLayers.rotate.setLatLng([pos.lat, pos.lng]);
+  handleLayers.rotateLine.setLatLngs([[center.lat, center.lng],[pos.lat, pos.lng]]);
+}
+
+/* Menciutkan sementara panel toolbar (hanya menyisakan header) selagi Admin
+   sedang aktif menggeser/mengubah ukuran/memutar sebuah area, supaya panel
+   tidak menutupi area yang sedang dipindahkan di tengah peta. Otomatis
+   melebar kembali begitu tarikan (drag) selesai. */
+function setToolbarDragging(active){
+  const el = document.getElementById('zoneToolbar');
+  if (el) el.classList.toggle('zt-dragging', active);
+  map.getContainer().classList.toggle('zone-dragging', active);
+}
+
+function showHandlesForZone(zone){
+  clearHandles();
+  const MIN_EXTENT = 0.00025; // batas minimum panjang sisi (~28m), mencegah bentuk terbalik/kolaps
+
+  /* ---- Handle GESER di tengah area (ikon panah 4-arah) ---- */
+  const centerStart = polyCentroid(zone.corners);
+  handleLayers.move = L.marker([centerStart.lat, centerStart.lng], {
+    icon: buildHandleIcon('move'), draggable: true, zIndexOffset: 1100
+  }).addTo(map);
+
+  let moveCtx = null;
+  handleLayers.move.on('dragstart', () => {
+    moveCtx = { startCenter: handleLayers.move.getLatLng(), startCorners: zone.corners.map(c => ({...c})) };
+    setToolbarDragging(true);
+  });
+  handleLayers.move.on('drag', () => {
+    if (!moveCtx) return;
+    const ll = handleLayers.move.getLatLng();
+    const dLat = ll.lat - moveCtx.startCenter.lat, dLng = ll.lng - moveCtx.startCenter.lng;
+    zone.corners = moveCtx.startCorners.map(c => ({ lat: c.lat + dLat, lng: c.lng + dLng }));
+    renderZonePolygon(zone);
+    // Catatan: reposisi hanya sudut & handle putar — JANGAN reposisi handle 'move' ini
+    // sendiri di sini (ia sedang aktif di-drag Leaflet, memaksa setLatLng akan bentrok
+    // seperti bug sebelumnya).
+    zone.corners.forEach((c, idx) => {
+      if (handleLayers.corners[idx]) handleLayers.corners[idx].setLatLng([c.lat, c.lng]);
+    });
+    repositionRotateHandleLite(zone);
+  });
+  handleLayers.move.on('dragend', () => {
+    moveCtx = null;
+    setToolbarDragging(false);
+    renderLandmarkMarker(zone);
+    reclassifyAllGraves();
+  });
+
+  zone.corners.forEach((c, idx) => {
+    const m = L.marker([c.lat, c.lng], { icon: buildHandleIcon('corner'), draggable:true, zIndexOffset:1000 }).addTo(map);
+    let ctx = null;
+
+    m.on('dragstart', () => {
+      setToolbarDragging(true);
+      const anchorIdx = (idx + 2) % 4;
+      const adj1Idx = (idx + 1) % 4;
+      const adj2Idx = (idx + 3) % 4;
+      const anchor = { ...zone.corners[anchorIdx] };
+      const adj1 = zone.corners[adj1Idx];
+      const adj2 = zone.corners[adj2Idx];
+      const u = { lng: adj1.lng - anchor.lng, lat: adj1.lat - anchor.lat };
+      const v = { lng: adj2.lng - anchor.lng, lat: adj2.lat - anchor.lat };
+      const uLen = Math.hypot(u.lng, u.lat) || 1e-9;
+      const vLen = Math.hypot(v.lng, v.lat) || 1e-9;
+      ctx = {
+        anchorIdx, adj1Idx, adj2Idx, anchor,
+        uHat: { lng: u.lng / uLen, lat: u.lat / uLen },
+        vHat: { lng: v.lng / vLen, lat: v.lat / vLen }
+      };
+    });
+
+    m.on('drag', () => {
+      if (!ctx) return;
+      const ll = m.getLatLng();
+      const dLng = ll.lng - ctx.anchor.lng, dLat = ll.lat - ctx.anchor.lat;
+      let projU = dLng * ctx.uHat.lng + dLat * ctx.uHat.lat;
+      let projV = dLng * ctx.vHat.lng + dLat * ctx.vHat.lat;
+      projU = Math.max(MIN_EXTENT, projU);
+      projV = Math.max(MIN_EXTENT, projV);
+
+      const newAdj1 = { lat: ctx.anchor.lat + ctx.uHat.lat * projU, lng: ctx.anchor.lng + ctx.uHat.lng * projU };
+      const newAdj2 = { lat: ctx.anchor.lat + ctx.vHat.lat * projV, lng: ctx.anchor.lng + ctx.vHat.lng * projV };
+      const newDragged = {
+        lat: ctx.anchor.lat + ctx.uHat.lat * projU + ctx.vHat.lat * projV,
+        lng: ctx.anchor.lng + ctx.uHat.lng * projU + ctx.vHat.lng * projV
+      };
+
+      zone.corners[ctx.adj1Idx] = newAdj1;
+      zone.corners[ctx.adj2Idx] = newAdj2;
+      zone.corners[idx] = newDragged;
+
+      // Catatan: marker yang SEDANG ditarik (m) sengaja TIDAK di-setLatLng ulang di sini —
+      // memaksa reposisi marker aktif saat event 'drag'-nya sendiri bentrok dengan
+      // pelacakan drag internal Leaflet dan menyebabkan seluruh area "ikut bergerak"/melayang.
+      // Biarkan Leaflet yang mengontrol posisi visual marker ini; hanya sudut TETANGGA
+      // (yang tidak sedang ditarik) yang aman untuk diposisikan ulang secara manual.
+      if (handleLayers.corners[ctx.adj1Idx]) handleLayers.corners[ctx.adj1Idx].setLatLng([newAdj1.lat, newAdj1.lng]);
+      if (handleLayers.corners[ctx.adj2Idx]) handleLayers.corners[ctx.adj2Idx].setLatLng([newAdj2.lat, newAdj2.lng]);
+      if (handleLayers.move) { const c = polyCentroid(zone.corners); handleLayers.move.setLatLng([c.lat, c.lng]); }
+
+      renderZonePolygon(zone);
+      repositionRotateHandleLite(zone);
+    });
+    m.on('dragend', () => {
+      if (ctx) {
+        // Selaraskan ulang posisi marker persis ke sudut hasil klem, sekarang aman
+        // karena drag internal Leaflet untuk marker ini sudah selesai.
+        const finalPos = zone.corners[idx];
+        m.setLatLng([finalPos.lat, finalPos.lng]);
+      }
+      ctx = null;
+      setToolbarDragging(false);
+      renderLandmarkMarker(zone);
+      reclassifyAllGraves();
+    });
+    handleLayers.corners.push(m);
+  });
+
+  const center0 = polyCentroid(zone.corners);
+  const pos0 = rotateHandleLatLng(zone);
+  handleLayers.rotateLine = L.polyline([[center0.lat,center0.lng],[pos0.lat,pos0.lng]], {
+    color:'#B4894F', weight:1.5, dashArray:'3 5', interactive:false
+  }).addTo(map);
+  handleLayers.rotate = L.marker([pos0.lat, pos0.lng], { icon: buildHandleIcon('rotate'), draggable:true, zIndexOffset:1000 }).addTo(map);
+
+  handleLayers.rotate.on('dragstart', () => {
+    setToolbarDragging(true);
+    handleLayers.rotate._startCorners = zone.corners.map(c => ({...c}));
+    handleLayers.rotate._startCenter = polyCentroid(zone.corners);
+    const c0 = handleLayers.rotate._startCorners[0];
+    const cen = handleLayers.rotate._startCenter;
+    handleLayers.rotate._startAngle = Math.atan2(c0.lat - cen.lat, c0.lng - cen.lng);
+  });
+  handleLayers.rotate.on('drag', () => {
+    const ll = handleLayers.rotate.getLatLng();
+    const cen = handleLayers.rotate._startCenter;
+    const currentAngle = Math.atan2(ll.lat - cen.lat, ll.lng - cen.lng);
+    const delta = currentAngle - handleLayers.rotate._startAngle;
+    zone.corners = handleLayers.rotate._startCorners.map(c => rotatePoint(c, cen, delta));
+    renderZonePolygon(zone);
+    updateCornerHandlePositions(zone);
+    handleLayers.rotateLine.setLatLngs([[cen.lat, cen.lng],[ll.lat, ll.lng]]);
+  });
+  handleLayers.rotate.on('dragend', () => { setToolbarDragging(false); renderLandmarkMarker(zone); reclassifyAllGraves(); });
+}
+
+/* ---- Pilih / kelola zona ---- */
+function selectZoneForEdit(id){
+  state.zoneEditId = id;
+  const zone = ZONES.find(z => z.id === id);
+  if (zone) showHandlesForZone(zone);
+  updateZoneToolbarUI();
+}
+function deselectZone(){
+  state.zoneEditId = null;
+  clearHandles();
+  updateZoneToolbarUI();
+}
+/* Menambahkan poligon area baru untuk Blok Utama tingkat teratas (FR-19,
+   fleksibel). Nama diambil bebas dari input Admin: kalau nama sudah ada,
+   ini menambah area/polygon tambahan untuk Blok Utama yang sama (blok
+   dengan wilayah tidak menyambung); kalau nama belum pernah dipakai,
+   sebuah Blok Utama BARU otomatis terbentuk (warna & inisial diberi
+   otomatis oleh assignBlockMeta). */
+function addZone(name){
+  name = (name || '').trim();
+  if (!name){ showToast('Ketik atau pilih nama Blok Utama terlebih dahulu'); return; }
+  const isNewBlock = !getMainBlockNames().includes(name);
+  assignBlockMeta(name);
+  const c = map.getCenter();
+  const halfLat = 0.0009, halfLng = 0.0009;
+  const zone = makeZone(name, c.lat - halfLat, c.lat + halfLat, c.lng - halfLng, c.lng + halfLng);
+  ZONES.push(zone);
+  renderZonePolygon(zone);
+  renderLandmarkMarker(zone);
+  selectZoneForEdit(zone.id);
+  document.getElementById('ztMainInput').value = name;
+  refreshZoneToolbarLists();
+  renderAll();
+  showToast(isNewBlock
+    ? `Blok Utama baru "${name}" dibuat — geser, tarik sudut untuk ubah ukuran, atau putar sesuai kebutuhan`
+    : `Area tambahan untuk "${name}" ditambahkan — geser, tarik sudut untuk ubah ukuran, atau putar sesuai kebutuhan`);
+}
+
+/* Menambahkan poligon area sub-blok baru yang menginduk ke Blok Utama yang
+   sedang aktif dipilih pada input Blok Utama (bukan dropdown terpisah). */
+function addSubZone(parentName, customName){
+  parentName = (parentName || '').trim();
+  if (!parentName){ showToast('Pilih atau ketik nama Blok Utama aktif terlebih dahulu'); return; }
+  if (!getMainBlockNames().includes(parentName)){
+    showToast(`Blok Utama "${parentName}" belum ada di peta — tambahkan dulu sebagai Blok Utama`);
+    return;
+  }
+  customName = (customName || '').trim();
+  let subName;
+  if (customName){
+    if (ZONES.some(z => z.name === customName)){
+      showToast(`Nama "${customName}" sudah dipakai area lain`);
+      return;
+    }
+    subName = customName;
+  } else {
+    const existingSubs = ZONES.filter(z => z.parent === parentName).length;
+    subName = `${parentName}/${existingSubs + 1}`;
+  }
+  const c = map.getCenter();
+  const halfLat = 0.00035, halfLng = 0.00035;
+  const zone = makeZone(subName, c.lat - halfLat, c.lat + halfLat, c.lng - halfLng, c.lng + halfLng, parentName);
+  ZONES.push(zone);
+  renderZonePolygon(zone);
+  renderLandmarkMarker(zone);
+  selectZoneForEdit(zone.id);
+  refreshZoneToolbarLists();
+  document.getElementById('ztSubSelect').value = subName;
+  const subAddInput = document.getElementById('ztSubAddInput');
+  if (subAddInput) subAddInput.value = '';
+  showToast(`Sub-blok "${subName}" ditambahkan di bawah "${parentName}" — atur posisi & ukurannya di dalam area induk`);
+}
+
+/* Mengubah nama Blok Utama yang sedang aktif dipilih (dropdown/input pertama).
+   Semua area miliknya, sub-bloknya, warna/ikonnya, serta data almarhum yang
+   mereferensikan Blok ini ikut diperbarui supaya tetap konsisten. */
+function renameMainBlock(oldName, newName){
+  oldName = (oldName || '').trim();
+  newName = (newName || '').trim();
+  if (!oldName){ showToast('Pilih atau ketik nama Blok Utama yang ingin diganti namanya'); return; }
+  if (!newName){ showToast('Nama baru untuk Blok Utama tidak boleh kosong'); return; }
+  if (newName === oldName){ showToast('Nama baru sama dengan nama lama'); return; }
+  if (getMainBlockNames().includes(newName)){ showToast(`Nama "${newName}" sudah dipakai Blok Utama lain`); return; }
+
+  const mainZones = ZONES.filter(z => z.name === oldName && !z.parent);
+  if (!mainZones.length){ showToast(`Blok Utama "${oldName}" tidak ditemukan di peta`); return; }
+
+  mainZones.forEach(z => { z.name = newName; });
+  ZONES.forEach(z => { if (z.parent === oldName) z.parent = newName; });
+
+  if (BLOCK_META[oldName]){ BLOCK_META[newName] = BLOCK_META[oldName]; delete BLOCK_META[oldName]; }
+  else { assignBlockMeta(newName); }
+  BLOCK_META[newName].short = newName.toUpperCase();
+  BLOCK_META[newName].icon = deriveBlockIcon(newName);
+  if (PLOT_PREFIX[oldName]){ PLOT_PREFIX[newName] = PLOT_PREFIX[oldName]; delete PLOT_PREFIX[oldName]; }
+  GRAVE_DATA.forEach(g => { if (g.block === oldName) g.block = newName; });
+  if (state.activeCategory === oldName) state.activeCategory = newName;
+
+  ZONES.filter(z => z.name === newName || z.parent === newName).forEach(z => {
+    renderZonePolygon(z);
+    renderLandmarkMarker(z);
+  });
+
+  document.getElementById('ztMainInput').value = newName;
+  document.getElementById('ztMainRenameInput').value = '';
+  refreshZoneToolbarLists();
+  renderAll();
+  showToast(`Blok Utama "${oldName}" diubah namanya menjadi "${newName}"`);
+}
+
+/* Mengubah nama Sub-Blok yang sedang dipilih dari dropdown kedua. */
+function renameSubBlock(oldName, newName){
+  oldName = (oldName || '').trim();
+  newName = (newName || '').trim();
+  if (!oldName){ showToast('Pilih Sub-Blok yang ingin diganti namanya'); return; }
+  if (!newName){ showToast('Nama baru untuk Sub-Blok tidak boleh kosong'); return; }
+  if (newName === oldName){ showToast('Nama baru sama dengan nama lama'); return; }
+  if (ZONES.some(z => z.name === newName)){ showToast(`Nama "${newName}" sudah dipakai area lain`); return; }
+
+  const zone = ZONES.find(z => z.name === oldName && z.parent);
+  if (!zone){ showToast(`Sub-blok "${oldName}" tidak ditemukan`); return; }
+
+  zone.name = newName;
+  ZONES.forEach(z => { if (z.parent === oldName) z.parent = newName; });
+  renderZonePolygon(zone);
+  renderLandmarkMarker(zone);
+
+  document.getElementById('ztSubRenameInput').value = '';
+  refreshZoneToolbarLists();
+  document.getElementById('ztSubSelect').value = newName;
+  showToast(`Sub-blok "${oldName}" diubah namanya menjadi "${newName}"`);
+}
+
+/* Menyinkronkan datalist Blok Utama & dropdown Sub-Blok pada toolbar
+   dengan kondisi ZONES terkini (dipanggil tiap ada tambah/ubah/hapus zona). */
+function refreshZoneToolbarLists(){
+  const mainList = document.getElementById('ztMainList');
+  if (mainList) mainList.innerHTML = getMainBlockNames().map(n => `<option value="${n}"></option>`).join('');
+
+  const mainInput = document.getElementById('ztMainInput');
+  const subSelect = document.getElementById('ztSubSelect');
+  if (subSelect && mainInput){
+    const parentName = mainInput.value.trim();
+    const subs = parentName ? getSubZonesOf(parentName) : [];
+    subSelect.innerHTML = subs.length
+      ? subs.map(z => `<option value="${z.name}">${z.name}</option>`).join('')
+      : `<option value="">— tidak ada sub-blok —</option>`;
+  }
+}
+
+function deleteSelectedZone(){
+  const idx = ZONES.findIndex(z => z.id === state.zoneEditId);
+  if (idx < 0) return;
+  const zone = ZONES[idx];
+  const hasChildren = ZONES.some(z => z.parent === zone.name);
+  if (hasChildren){
+    showToast(`Tidak dapat menghapus "${zone.name}" — hapus dulu sub-bloknya terlebih dahulu`);
+    return;
+  }
+  const layer = zoneLayers[zone.id];
+  if (layer) { map.removeLayer(layer); delete zoneLayers[zone.id]; }
+  removeLandmarkMarker(zone.id);
+  ZONES.splice(idx, 1);
+  clearHandles();
+  state.zoneEditId = null;
+  updateZoneToolbarUI();
+  refreshZoneToolbarLists();
+  renderAll();
+  showToast(`Area "${zone.name}" dihapus`);
+  reclassifyAllGraves();
+}
+
+function toggleManageMode(){
+  state.manageMode = !state.manageMode;
+  document.getElementById('editZoneBtn').classList.toggle('active', state.manageMode);
+  map.getContainer().classList.toggle('zone-edit-mode', state.manageMode);
+  document.getElementById('zoneToolbar').style.display = state.manageMode ? 'flex' : 'none';
+  if (!state.manageMode) deselectZone();
+  else {
+    document.getElementById('zoneToolbar').classList.remove('zt-collapsed', 'zt-dragging');
+    showToast('Mode kelola area aktif — pilih area untuk digeser/diubah, atau tambah area baru');
+    const mainInput = document.getElementById('ztMainInput');
+    if (mainInput && !mainInput.value) mainInput.value = getMainBlockNames()[0] || '';
+    refreshZoneToolbarLists();
+  }
+  updateZoneToolbarUI();
+}
+
+function updateZoneToolbarUI(){
+  const selectedRow = document.getElementById('ztSelectedRow');
+  const statusRow = document.getElementById('ztStatusRow');
+  const nameEl = document.getElementById('ztSelectedName');
+  const parentEl = document.getElementById('ztSelectedParent');
+  const statusSelect = document.getElementById('ztStatusSelect');
+  const zone = ZONES.find(z => z.id === state.zoneEditId);
+  if (zone) {
+    selectedRow.style.display = 'flex';
+    statusRow.style.display = 'flex';
+    nameEl.textContent = zone.name;
+    parentEl.textContent = zone.parent ? ` (sub-blok dari ${zone.parent})` : '';
+    parentEl.className = zone.parent ? 'zt-parent-tag' : '';
+    statusSelect.value = zone.statusKetersediaan;
+    // ikuti pilihan zona yang diklik langsung di peta agar konteks
+    // Blok Utama / Sub-Blok pada toolbar tetap sinkron
+    const mainInput = document.getElementById('ztMainInput');
+    if (mainInput){
+      const mainName = zone.parent || zone.name;
+      if (mainInput.value !== mainName){ mainInput.value = mainName; refreshZoneToolbarLists(); }
+      if (zone.parent) document.getElementById('ztSubSelect').value = zone.name;
+    }
+  } else {
+    selectedRow.style.display = 'none';
+    statusRow.style.display = 'none';
+  }
+}
+
+function saveZoneStatus(){
+  const zone = ZONES.find(z => z.id === state.zoneEditId);
+  if (!zone) return;
+  const newStatus = document.getElementById('ztStatusSelect').value;
+  zone.statusKetersediaan = newStatus;
+  renderZonePolygon(zone);
+  showToast(`Status "${zone.name}" diperbarui menjadi "${STATUS_BLOK_META[newStatus].label}"`);
+}
+
+/* =========================================================
+   LANDMARK BLOK — titik penanda/centroid permanen di tiap zona/blok
+   (selalu tampil di peta). Posisinya murni dihitung otomatis dari
+   centroid poligon saat ini — mengikuti setiap kali area digeser/
+   diubah ukuran/diputar, tanpa perlu dikalibrasi manual.
+   ========================================================= */
+let landmarkMarkers = {};
+
+function renderLandmarkMarker(zone){
+  let m = landmarkMarkers[zone.id];
+  const c = polyCentroid(zone.corners);
+  const pos = [c.lat, c.lng];
+  if (!m){
+    const icon = L.divIcon({ className: '', html: `<div class="ref-point-marker"></div>`, iconSize: [22,22], iconAnchor: [11,11] });
+    m = L.marker(pos, { icon, draggable: false, interactive: false, zIndexOffset: 900 }).addTo(map);
+    m.bindTooltip(zone.name, { direction: 'top', offset: [0,-10], className: 'zone-label', opacity: 0.9 });
+    landmarkMarkers[zone.id] = m;
+  } else {
+    m.setLatLng(pos);
+    m.setTooltipContent(zone.name);
+  }
+  return m;
+}
+
+function removeLandmarkMarker(zoneId){
+  const m = landmarkMarkers[zoneId];
+  if (m) { map.removeLayer(m); delete landmarkMarkers[zoneId]; }
+}
+
+ZONES.forEach(renderLandmarkMarker);
+
+/* Dipanggil setiap kali bentuk/posisi sebuah area blok berubah (digeser,
+   diubah ukuran, diputar, ditambah, dihapus) — cukup render ulang
+   tampilan daftar/peta, lalu render ulang titik lokasi Blok yang cocok. */
+function reclassifyAllGraves(){
+  renderAll();
+}
+
+/* =========================================================
+   FASILITAS / LANDMARK (Bab V SRS — Data Fasilitas/Landmark)
+   ========================================================= */
+const MOCK_FACILITY_DATA = [
+  { id: "f1", namaFasilitas: "Kantor TPU Pandu", jenisFasilitas: "Kantor", latitude: -6.90075, longitude: 107.59255 },
+  { id: "f2", namaFasilitas: "Kantor Dinas Pemakaman", jenisFasilitas: "Kantor", latitude: -6.90065, longitude: 107.59305 },
+  { id: "f3", namaFasilitas: "Gerbang Utama Jl. Pandu", jenisFasilitas: "Gerbang", latitude: -6.9012, longitude: 107.59245 }
+];
+// FACILITY_DATA sudah dideklarasikan & diisi dari hasil fetch API di bagian atas script
+
+const FACILITY_META = {
+  "Kantor": { color: "#4A5568", glyph: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3"><rect x="4" y="3" width="16" height="18" rx="1"/><line x1="9" y1="8" x2="9" y2="8.01"/><line x1="15" y1="8" x2="15" y2="8.01"/><line x1="9" y1="12" x2="9" y2="12.01"/><line x1="15" y1="12" x2="15" y2="12.01"/><line x1="9" y1="16" x2="15" y2="16"/></svg>` },
+  "Gerbang": { color: "#4A5568", glyph: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3"><path d="M4 21V9l8-5 8 5v12"/><line x1="4" y1="21" x2="20" y2="21"/><line x1="9" y1="21" x2="9" y2="13"/><line x1="15" y1="21" x2="15" y2="13"/></svg>` },
+  "Fasilitas Umum": { color: "#4A5568", glyph: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>` }
+};
+
+FACILITY_DATA.forEach(f => {
+  const meta = FACILITY_META[f.jenisFasilitas] || FACILITY_META["Fasilitas Umum"];
+  const icon = L.divIcon({
+    className: '',
+    html: `<div class="facility-marker" style="background:${meta.color}">${meta.glyph}</div>`,
+    iconSize: [26, 26], iconAnchor: [13, 24]
+  });
+  L.marker([f.latitude, f.longitude], { icon, zIndexOffset: 500 })
+    .addTo(map)
+    .bindPopup(`<div class="popup-name">${f.namaFasilitas}</div><div class="popup-sub">${f.jenisFasilitas}</div>`, { closeButton: false, offset: [0, -20] });
+});
+
+/* =========================================================
+   FOKUS & HIGHLIGHT BLOK (FR-18) — pengganti fly-to-marker individual.
+   Sesuai revisi SRS: makam tidak lagi punya titik koordinat sendiri,
+   jadi hasil pencarian/pemilihan makam memusatkan & menyorot POLIGON
+   BLOK tempat makam itu terdaftar.
+   ========================================================= */
+function getZonesForBlock(blockName){
+  return ZONES.filter(z => z.name === blockName);
+}
+
+function getBlockCentroid(blockName){
+  const zones = getZonesForBlock(blockName);
+  if (!zones.length) return null;
+  // titik tengah (centroid) area blok pertama yang cocok, dihitung langsung
+  // dari bentuk poligonnya saat ini
+  return polyCentroid(zones[0].corners);
+}
+
+function focusBlock(blockName){
+  const zones = getZonesForBlock(blockName);
+  if (!zones.length) { showToast('Area untuk blok ini belum digambar di peta'); return; }
+
+  let bounds = null;
+  zones.forEach(z => {
+    z.corners.forEach(c => {
+      if (!bounds) bounds = L.latLngBounds([c.lat, c.lng], [c.lat, c.lng]);
+      else bounds.extend([c.lat, c.lng]);
+    });
+  });
+  map.flyToBounds(bounds, { padding: [60, 60], maxZoom: 19, duration: 1.1 });
+  highlightZones(zones);
+}
+
+let highlightTimer = null;
+function highlightZones(zones){
+  zones.forEach(z => {
+    const layer = zoneLayers[z.id];
+    if (layer) layer.getElement()?.classList.add('zone-highlight');
+  });
+  clearTimeout(highlightTimer);
+  highlightTimer = setTimeout(() => {
+    ZONES.forEach(z => {
+      const layer = zoneLayers[z.id];
+      if (layer) layer.getElement()?.classList.remove('zone-highlight');
+    });
+  }, 2600);
+}
+
+let toastTimer = null;
+function showToast(msg){
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+function calcAge(birth, death){
+  const b = new Date(birth), d = new Date(death);
+  let years = d.getFullYear() - b.getFullYear();
+  const m = d.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && d.getDate() < b.getDate())) years--;
+  return years;
+}
+function fmtDate(str){
+  const d = new Date(str);
+  return d.toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+}
+function getFiltered(){
+  const q = state.query.trim().toLowerCase();
+  return GRAVE_DATA.filter(g => {
+    const matchCat = state.activeCategory === "Semua Blok" || g.block === state.activeCategory;
+    if (!matchCat) return false;
+
+    const yearMeninggal = Number(g.meninggalTanggal.slice(0,4));
+    if (state.yearFrom && yearMeninggal < state.yearFrom) return false;
+    if (state.yearTo && yearMeninggal > state.yearTo) return false;
+
+    if (!q) return true;
+    return g.fullName.toLowerCase().includes(q) ||
+           g.binBinti.toLowerCase().includes(q) ||
+           g.plotNumber.toLowerCase().includes(q) ||
+           (g.noRegistrasi && g.noRegistrasi.toLowerCase().includes(q)) ||
+           (g.nik && g.nik.includes(q));
+  });
+}
+
+/* =========================================================
+   RENDER: chips
+   ========================================================= */
+function renderChips(container){
+  container.innerHTML = "";
+  getCategories().forEach(cat => {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (state.activeCategory === cat ? ' active' : '');
+    const meta = BLOCK_META[cat];
+    chip.innerHTML = (meta ? `<span class="swatch" style="background:${meta.color}"></span>` : `<span class="swatch" style="background:#8a8676"></span>`) + cat;
+    chip.onclick = () => { state.activeCategory = cat; renderAll(); };
+    container.appendChild(chip);
+  });
+}
+
+/* =========================================================
+   RENDER: legenda peta (mengikuti Blok Utama yang sedang ada)
+   ========================================================= */
+function renderLegend(){
+  const el = document.getElementById('legendBlockRows');
+  if (!el) return;
+  el.innerHTML = getMainBlockNames().map(name => {
+    const meta = resolveBlockMeta(name);
+    return `<div class="row"><span class="sw" style="background:${meta.hex}"></span>${name}</div>`;
+  }).join('');
+}
+
+/* =========================================================
+   RENDER: list item
+   ========================================================= */
+function graveItemHTML(g){
+  const meta = resolveBlockMeta(g.block); /* PATCH: pakai fallback biar tidak crash kalau nama blok belum dikenal */
+  const age = calcAge(g.birthDate, g.meninggalTanggal);
+  return `
+    <div class="grave-item ${g.id === state.selectedId ? 'selected':''}" data-id="${g.id}">
+      <div class="grave-icon" style="background:${meta.color}">${meta.icon}</div>
+      <div class="grave-info">
+        <div class="grave-name">${g.fullName}</div>
+        <div class="grave-sub">${g.binBinti} &middot; wafat usia ${age} th</div>
+        <div class="grave-badges">
+          <span class="badge">${meta.short}</span>
+          <span class="badge">Kav. ${g.plotNumber}</span>
+          <span class="badge">${g.noRegistrasi}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function attachItemHandlers(root){
+  root.querySelectorAll('.grave-item').forEach(el => {
+    el.addEventListener('click', () => selectGrave(el.dataset.id, true));
+  });
+}
+
+/* =========================================================
+   RENDER: detail card
+   ========================================================= */
+function maskNik(nik){
+  if (!nik || nik.length < 8) return nik;
+  return nik.slice(0,4) + ' •••• •••• ' + nik.slice(-4);
+}
+
+const STATUS_META = {
+  "Terisi (Aktif Her-Registrasi)": { color: "var(--forest-deep)", label: "Terisi (Aktif Her-Registrasi)" },
+  "Kosong":                        { color: "#9a9587", label: "Kosong" }
+};
+
+function detailCardHTML(g){
+  const meta = resolveBlockMeta(g.block); /* PATCH: pakai fallback biar tidak crash kalau nama blok belum dikenal */
+  const age = calcAge(g.birthDate, g.meninggalTanggal);
+  const centroid = getBlockCentroid(g.block);
+  const gmapsUrl = centroid ? `https://www.google.com/maps/dir/?api=1&destination=${centroid.lat},${centroid.lng}` : null;
+  const statusMeta = STATUS_META[g.statusPetak] || STATUS_META["Terisi (Aktif Her-Registrasi)"];
+  const alamatLengkap = [g.alamatJalan, g.kelurahan ? 'Kel. ' + g.kelurahan : '', g.kecamatan ? 'Kec. ' + g.kecamatan : '']
+    .filter(Boolean).join(', ');
+  return `
+    <div class="detail-card">
+      <div class="detail-top">
+        <button class="back-btn" id="backToListBtn">&times;</button>
+        <div class="detail-block-tag">${meta.icon} ${g.block} &middot; ${g.noRegistrasi}</div>
+        <h2>${g.fullName}</h2>
+        <div class="binbinti">${g.binBinti}</div>
+      </div>
+      <div class="detail-body">
+        <div class="age-pill">
+          <span class="num">${age}</span>
+          <span class="lbl">tahun usia wafat</span>
+          <span class="status-chip" style="background:${statusMeta.color}">${statusMeta.label}</span>
+        </div>
+        <div class="dgrid">
+          <div class="dfield">
+            <label>Tanggal Lahir</label>
+            <div class="val">${fmtDate(g.birthDate)}</div>
+          </div>
+          <div class="dfield">
+            <label>Tanggal Meninggal</label>
+            <div class="val">${fmtDate(g.meninggalTanggal)}</div>
+          </div>
+          <div class="dfield">
+            <label>Tanggal Dimakamkan</label>
+            <div class="val">${fmtDate(g.dimakamkanTanggal)}</div>
+          </div>
+          <div class="dfield">
+            <label>NIK</label>
+            <div class="val mono">${maskNik(g.nik)}</div>
+          </div>
+          <div class="dfield">
+            <label>Blok</label>
+            <div class="val">${g.block}</div>
+          </div>
+          <div class="dfield">
+            <label>No. Kavling <span style="text-transform:none;font-style:italic;">(opsional)</span></label>
+            <div class="val mono">${g.plotNumber || '-'}</div>
+          </div>
+        </div>
+        <div class="dfield" style="margin-bottom:14px;">
+          <label>Alamat</label>
+          <div class="val" style="font-size:13px;font-weight:500;">${alamatLengkap || '-'}</div>
+        </div>
+        <div class="kavling-note">
+          Nomor kavling bersifat referensi internal petugas dan tidak dipetakan sebagai titik koordinat presisi — lokasi ditampilkan pada tingkat Blok.
+        </div>
+
+        ${centroid ? `
+        <div class="coord-row">
+          <span>Koordinat Blok: <span class="coord-val">${centroid.lat.toFixed(6)}, ${centroid.lng.toFixed(6)}</span></span>
+          <button class="coord-copy" id="copyCoordBtn">Salin</button>
+        </div>` : ''}
+
+        <div class="btn-row">
+          ${gmapsUrl ? `
+          <a class="btn btn-primary" href="${gmapsUrl}" target="_blank" rel="noopener noreferrer">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Rute Google Maps
+          </a>` : ''}
+          <button class="btn btn-secondary" id="focusMapBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+            Fokus &amp; Sorot Blok
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function emptyStateHTML(){
+  return `
+    <div class="empty-state">
+      <div class="glyph">🔍</div>
+      <h3>Makam tidak ditemukan</h3>
+      <p>Coba ubah kata kunci pencarian atau pilih kategori blok lain.</p>
+    </div>`;
+}
+
+/* =========================================================
+   MAIN RENDER (desktop panel + mobile sheet)
+   ========================================================= */
+function renderAll(){
+  const filtered = getFiltered();
+
+  // chips
+  renderChips(document.getElementById('chipRow'));
+  renderChips(document.getElementById('mobileChipRow'));
+
+  // legenda peta (mengikuti Blok Utama saat ini)
+  renderLegend();
+
+  // meta count
+  document.getElementById('resultCount').textContent = `${filtered.length} makam ditemukan`;
+  document.getElementById('resultHint').textContent = state.query ? `“${state.query}”` : '';
+
+  // desktop scroll area
+  const scrollArea = document.getElementById('scrollArea');
+  const selected = GRAVE_DATA.find(g => g.id === state.selectedId);
+
+  if (state.sheetMode === 'detail' && selected){
+    scrollArea.innerHTML = detailCardHTML(selected);
+    bindDetailButtons(scrollArea, selected);
+  } else if (filtered.length === 0){
+    scrollArea.innerHTML = emptyStateHTML();
+  } else {
+    scrollArea.innerHTML = filtered.map(graveItemHTML).join('');
+    attachItemHandlers(scrollArea);
+  }
+
+  // mobile sheet
+  renderSheet(filtered, selected);
+}
+
+function bindDetailButtons(root, g){
+  const backBtn = root.querySelector('#backToListBtn');
+  if (backBtn) backBtn.onclick = () => {
+    state.sheetMode = 'list'; state.selectedId = null; renderAll();
+  };
+  const focusBtn = root.querySelector('#focusMapBtn');
+  if (focusBtn) focusBtn.onclick = () => focusBlock(g.block);
+  const copyBtn = root.querySelector('#copyCoordBtn');
+  if (copyBtn) copyBtn.onclick = () => {
+    const centroid = getBlockCentroid(g.block);
+    if (!centroid) return;
+    const text = `${centroid.lat.toFixed(6)}, ${centroid.lng.toFixed(6)}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => showToast('Koordinat Blok disalin'));
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      showToast('Koordinat Blok disalin');
+    }
+  };
+}
+
+/* =========================================================
+   MOBILE SHEET
+   ========================================================= */
+function renderSheet(filtered, selected){
+  const sheet = document.getElementById('sheet');
+  const body = document.getElementById('sheetBody');
+  const title = document.getElementById('sheetTitle');
+
+  if (state.sheetMode === 'detail' && selected){
+    title.textContent = 'Detail Makam';
+    body.innerHTML = detailCardHTML(selected);
+    bindDetailButtons(body, selected);
+    openSheet('detail');
+  } else if (state.sheetMode === 'list') {
+    title.textContent = `${filtered.length} hasil pencarian`;
+    body.innerHTML = filtered.length ? filtered.map(graveItemHTML).join('') : emptyStateHTML();
+    attachItemHandlers(body);
+  }
+}
+
+let sheetHeights = { list: '30vh', detail: '58vh', full: '88vh' };
+function openSheet(mode){
+  const sheet = document.getElementById('sheet');
+  sheet.classList.add('open');
+  sheet.style.height = mode === 'detail' ? sheetHeights.detail : sheetHeights.list;
+}
+function closeSheet(){
+  document.getElementById('sheet').classList.remove('open');
+}
+
+/* drag handle for bottom sheet */
+(function initDrag(){
+  const sheet = document.getElementById('sheet');
+  const handle = document.getElementById('sheetHandle');
+  let startY = 0, startH = 0, dragging = false;
+
+  function px(v){ return (v/100)*window.innerHeight; }
+
+  function onStart(e){
+    dragging = true;
+    startY = (e.touches ? e.touches[0].clientY : e.clientY);
+    startH = sheet.getBoundingClientRect().height;
+    document.body.style.userSelect = 'none';
+  }
+  function onMove(e){
+    if (!dragging) return;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY);
+    const delta = startY - y;
+    let newH = startH + delta;
+    newH = Math.max(window.innerHeight*0.18, Math.min(window.innerHeight*0.9, newH));
+    sheet.style.height = newH + 'px';
+  }
+  function onEnd(){
+    if (!dragging) return;
+    dragging = false;
+    document.body.style.userSelect = '';
+    const h = sheet.getBoundingClientRect().height;
+    const vh = window.innerHeight;
+    if (h < vh*0.22) { closeSheet(); }
+    else if (h < vh*0.45) { sheet.style.height = '30vh'; }
+    else if (h < vh*0.75) { sheet.style.height = '58vh'; }
+    else { sheet.style.height = '88vh'; }
+  }
+
+  handle.addEventListener('mousedown', onStart);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onEnd);
+  handle.addEventListener('touchstart', onStart, {passive:true});
+  window.addEventListener('touchmove', onMove, {passive:true});
+  window.addEventListener('touchend', onEnd);
+})();
+
+document.getElementById('sheetClose').onclick = () => { closeSheet(); };
+
+/* =========================================================
+   SELECTION + FLYTO
+   ========================================================= */
+function selectGrave(id, fly){
+  state.selectedId = id;
+  state.sheetMode = 'detail';
+  const g = GRAVE_DATA.find(x => x.id === id);
+  if (g && fly) flyToGrave(g);
+  renderAll();
+}
+
+function flyToGrave(g){
+  focusBlock(g.block);
+}
+
+/* =========================================================
+   MAP CONTROLS
+   ========================================================= */
+document.getElementById('editZoneBtn').onclick = () => toggleManageMode();
+document.getElementById('ztStatusSaveBtn').onclick = () => saveZoneStatus();
+
+document.getElementById('ztCollapseBtn').onclick = () => {
+  document.getElementById('zoneToolbar').classList.toggle('zt-collapsed');
+};
+
+refreshZoneToolbarLists();
+
+document.getElementById('ztAddBtn').onclick = () => {
+  addZone(document.getElementById('ztMainInput').value);
+};
+document.getElementById('ztMainRenameBtn').onclick = () => {
+  renameMainBlock(document.getElementById('ztMainInput').value, document.getElementById('ztMainRenameInput').value);
+};
+document.getElementById('ztMainInput').addEventListener('input', refreshZoneToolbarLists);
+document.getElementById('ztMainInput').addEventListener('change', refreshZoneToolbarLists);
+document.getElementById('ztSubAddInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('ztAddSubBtn').click();
+});
+
+document.getElementById('ztAddSubBtn').onclick = () => {
+  addSubZone(document.getElementById('ztMainInput').value, document.getElementById('ztSubAddInput').value);
+};
+document.getElementById('ztSubRenameBtn').onclick = () => {
+  renameSubBlock(document.getElementById('ztSubSelect').value, document.getElementById('ztSubRenameInput').value);
+};
+
+document.getElementById('ztDeleteBtn').onclick = () => deleteSelectedZone();
+document.getElementById('ztDoneBtn').onclick = () => deselectZone();
+map.on('click', () => {
+  if (state.manageMode && state.zoneEditId) deselectZone();
+});
+document.getElementById('zoomInBtn').onclick = () => map.zoomIn();
+document.getElementById('zoomOutBtn').onclick = () => map.zoomOut();
+document.getElementById('resetBtn').onclick = () => {
+  map.flyTo(CENTER, DEFAULT_ZOOM, { duration: 0.9 });
+};
+
+/* =========================================================
+   SEARCH INPUT WIRING (desktop + mobile, synced)
+   ========================================================= */
+const inputDesktop = document.getElementById('searchInput');
+const inputMobile = document.getElementById('searchInputMobile');
+const clearBtn = document.getElementById('clearBtn');
+
+function handleQueryChange(val){
+  state.query = val;
+  clearBtn.style.display = val ? 'flex' : 'none';
+  if (val && state.sheetMode !== 'detail') { state.sheetMode = 'list'; openSheet('list'); }
+  renderAll();
+  if (inputDesktop.value !== val) inputDesktop.value = val;
+  if (inputMobile.value !== val) inputMobile.value = val;
+}
+
+inputDesktop.addEventListener('input', e => handleQueryChange(e.target.value));
+inputMobile.addEventListener('input', e => handleQueryChange(e.target.value));
+inputMobile.addEventListener('focus', () => { if (state.sheetMode !== 'detail') openSheet('list'); });
+clearBtn.addEventListener('click', () => handleQueryChange(''));
+
+document.getElementById('filterFab').addEventListener('click', () => {
+  document.getElementById('mobileChipRow').classList.toggle('show');
+  document.getElementById('yearFilterMobile').classList.toggle('show');
+});
+
+/* =========================================================
+   FILTER RENTANG TAHUN MENINGGAL (desktop + mobile, sinkron)
+   ========================================================= */
+const yearFromD = document.getElementById('yearFromDesktop');
+const yearToD = document.getElementById('yearToDesktop');
+const yearFromM = document.getElementById('yearFromMobile');
+const yearToM = document.getElementById('yearToMobile');
+
+function handleYearChange(){
+  const from = yearFromD.value || yearFromM.value;
+  const to = yearToD.value || yearToM.value;
+  state.yearFrom = from ? Number(from) : null;
+  state.yearTo = to ? Number(to) : null;
+  renderAll();
+}
+function syncYearInputs(){
+  [yearFromD, yearFromM].forEach(el => { if (document.activeElement !== el) el.value = state.yearFrom || ''; });
+  [yearToD, yearToM].forEach(el => { if (document.activeElement !== el) el.value = state.yearTo || ''; });
+}
+[yearFromD, yearToD, yearFromM, yearToM].forEach(el => {
+  el.addEventListener('input', () => { handleYearChange(); syncYearInputs(); });
+});
+document.getElementById('yearResetDesktop').addEventListener('click', () => {
+  state.yearFrom = null; state.yearTo = null; syncYearInputs(); renderAll();
+});
+document.getElementById('yearResetMobile').addEventListener('click', () => {
+  state.yearFrom = null; state.yearTo = null; syncYearInputs(); renderAll();
+});
+
+/* =========================================================
+   INITIAL RENDER
+   ========================================================= */
+renderAll();
+</script>
+</body>
+</html>
