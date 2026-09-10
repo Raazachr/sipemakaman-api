@@ -27,10 +27,8 @@ class PengajuanController extends Controller
             $query->where('pemohon_id', $user->id);
         } elseif ($user instanceof AdminTpu) {
             $query->where('tpu_id', $user->tpu_id);
-        } elseif ($user instanceof Uptd) {
-            $query->whereHas('tpu', fn ($q) => $q->where('uptd_id', $user->id));
         }
-        // SuperAdmin: tidak difilter, lihat semua
+        // SuperAdmin & AdminUptd (semua akun): lihat semua pengajuan
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -189,7 +187,7 @@ class PengajuanController extends Controller
             return $pengajuan->tpu_id === $user->tpu_id;
         }
         if ($user instanceof Uptd) {
-            return $pengajuan->tpu->uptd_id === $user->id;
+            return true;
         }
 
         return $user instanceof SuperAdmin;

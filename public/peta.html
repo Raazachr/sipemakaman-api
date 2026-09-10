@@ -85,6 +85,21 @@
   .panel-header p{
     margin:6px 0 0; font-size:13px; color:rgba(239,234,224,0.72); position:relative;
   }
+  .tpu-select{
+    position:relative;
+    margin-top:12px;
+    width:100%;
+    border:1px solid rgba(239,234,224,0.35);
+    background:rgba(255,255,255,0.10);
+    color:#fff;
+    border-radius:10px;
+    padding:8px 10px;
+    font-size:13px;
+    font-family:'Inter',sans-serif;
+    outline:none;
+  }
+  .tpu-select:focus{ border-color:var(--gold-soft); box-shadow:0 0 0 3px rgba(217,183,126,0.15); }
+  .tpu-select option{ color:var(--ink); background:#fff; }
 
   .search-wrap{ padding:18px 20px 8px; }
   .search-box{
@@ -660,6 +675,68 @@
     .pulse-ring{ animation:none; opacity:0; }
     * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
   }
+
+  /* ---------- Modal Edit Data Almarhum ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; z-index:3000;
+    background:rgba(15,26,18,0.55);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  .peta-edit-modal{
+    width:min(740px, 100%);
+    max-height:92vh;
+    background:var(--paper);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  .modal-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px;
+    background:var(--forest-deep); color:#fff;
+  }
+  .modal-header h3{ margin:0; font-size:17px; font-weight:600; }
+  .modal-close{
+    border:none; background:rgba(255,255,255,0.12); color:#fff;
+    width:30px; height:30px; border-radius:50%; font-size:18px; cursor:pointer; line-height:1;
+  }
+  .modal-close:hover{ background:rgba(255,255,255,0.25); }
+  .modal-body{ padding:18px 20px 22px; overflow-y:auto; }
+  .edit-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; }
+  .edit-field{ display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .edit-field.full{ grid-column:1 / -1; }
+  .edit-field label{ font-size:11.5px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.03em; }
+  .edit-field .req{ color:var(--danger); }
+  .edit-field input, .edit-field select, .edit-field textarea{
+    border:1.5px solid var(--line); border-radius:10px;
+    padding:9px 11px; font-size:13.5px; font-family:'Inter',sans-serif; color:var(--ink);
+    background:#fff; outline:none; width:100%;
+  }
+  .edit-field input:focus, .edit-field select:focus, .edit-field textarea:focus{
+    border-color:var(--forest-soft); box-shadow:0 0 0 3px rgba(60,99,73,0.10);
+  }
+  .edit-field textarea{ resize:vertical; min-height:64px; }
+  .edit-section-title{
+    grid-column:1 / -1;
+    margin:8px 0 0;
+    font-size:11.5px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--forest); border-top:1px solid var(--line); padding-top:14px;
+  }
+  .edit-actions{
+    display:flex; gap:10px; justify-content:flex-end;
+    border-top:1px solid var(--line); padding-top:14px; margin-top:16px;
+  }
+  .edit-btn{
+    border:none; border-radius:10px; padding:10px 18px; cursor:pointer;
+    font-size:13.5px; font-weight:600; font-family:'Inter',sans-serif;
+  }
+  .edit-btn.cancel{ background:var(--stone-dim); color:var(--ink-soft); }
+  .edit-btn.cancel:hover{ background:var(--line); }
+  .edit-btn.save{ background:var(--forest); color:#fff; }
+  .edit-btn.save:hover{ background:var(--forest-soft); }
+  .edit-btn.save:disabled{ opacity:0.6; cursor:not-allowed; }
 </style>
 </head>
 <body>
@@ -670,8 +747,9 @@
   <div id="panel">
     <div class="panel-header">
       <div class="eyebrow"><span class="dot"></span>NAVIGASI PEZIARAH</div>
-      <h1>TPU Pandu</h1>
-      <p>Peta UPTD I &middot; Kota Bandung</p>
+      <h1 id="panelTpuName">TPU Pandu</h1>
+      <p id="panelUptdName">Peta UPTD I &middot; Kota Bandung</p>
+      <select id="tpuSelect" class="tpu-select" title="Ganti TPU" aria-label="Pilih TPU"></select>
     </div>
 
     <div class="search-wrap">
@@ -789,7 +867,7 @@
     <div class="map-legend">
       <div id="legendBlockRows"></div>
       <div class="row"><span class="sw" style="background:#4A5568;border-radius:3px;"></span>Fasilitas / Landmark</div>
-      <div class="legend-hint">Tekan ikon panah untuk geser area blok</div>
+      <div class="legend-hint">Tekan ikon panah untuk menggeser area blok</div>
     </div>
   </div>
 
@@ -805,6 +883,17 @@
 
 </div>
 
+<!-- ============ MODAL EDIT DATA ALMARHUM ============ -->
+<div class="modal-overlay" id="editModal" style="display:none;">
+  <div class="peta-edit-modal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h3 id="editModalTitle">Edit Data Almarhum</h3>
+      <button class="modal-close" id="editModalClose" title="Tutup">&times;</button>
+    </div>
+    <div class="modal-body" id="editModalBody"></div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
 /* =========================================================
@@ -814,12 +903,79 @@
    otomatis menunggu sampai data ini selesai diambil dulu.
    ========================================================= */
 const API_BASE = 'http://localhost:8000/api';
-const TPU_ID = 1; // ganti sesuai id TPU yang mau ditampilkan
+let TPU_ID = 1; // TPU aktif; dapat diganti lewat dropdown pemilih TPU
+
+/* Hak akses kelola zona blok: hanya SuperAdmin & Admin UPTD yang boleh
+   menambah/menggeser/mengubah area blok di peta. Pemohon & AdminTPU hanya
+   melihat peta. Role diverifikasi ke backend (/api/me) supaya sesi lama
+   atau localStorage yang kedaluwarsa tidak bisa membuka fitur ini. */
+let USER_ROLE = '';
+try { USER_ROLE = localStorage.getItem('sipem_role') || ''; } catch (e) { USER_ROLE = ''; }
+let TOKEN = '';
+try { TOKEN = localStorage.getItem('sipem_token') || ''; } catch (e) { TOKEN = ''; }
+
+function enforceZoneAccess(role, verified) {
+  USER_ROLE = role || '';
+  // Kontrol kelola zone hanya tampil bila role TERVERIFIKASI ke server (/api/me).
+  // Saat verified=false, role dari localStorage hanya dipakai untuk UI lain
+  // (mis. tombol Edit Data), tidak untuk menampilkan panel kelola.
+  const showAdmin = verified && (USER_ROLE === 'SuperAdmin' || USER_ROLE === 'Uptd');
+  const editBtn = document.getElementById('editZoneBtn');
+  const toolbar = document.getElementById('zoneToolbar');
+  if (!showAdmin) {
+    if (editBtn) editBtn.style.display = 'none';
+    if (toolbar) toolbar.style.display = 'none';
+    try {
+      if (state && state.manageMode) state.manageMode = false;
+      if (map) map.getContainer().classList.remove('zone-edit-mode');
+    } catch (e) { /* state/map belum dideklarasikan */ }
+  } else {
+    if (editBtn) editBtn.style.display = '';
+  }
+}
+
+/* Muat ulang kartu hasil / sheet setelah role terverifikasi, supaya tombol
+   yang bergantung role (mis. Edit Data) ikut tampil/sembunyi dengan benar. */
+function refreshRoleUI() {
+  try {
+    if (typeof GRAVE_DATA !== 'undefined' && GRAVE_DATA.length && state) renderAll();
+  } catch (e) { /* data/belum siap */ }
+}
+
+function bootZoneAccess() {
+  if (TOKEN) {
+    fetch(`${API_BASE}/me`, { headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + TOKEN } })
+      .then(r => (r.ok ? r.json() : { tipe_akun: '' }))
+      .then(d => { enforceZoneAccess(d && d.tipe_akun, true); refreshRoleUI(); })
+      .catch(() => { enforceZoneAccess('', true); refreshRoleUI(); });
+  } else {
+    enforceZoneAccess('', true);
+  }
+}
+
+const CAN_MANAGE_ZONES = () => USER_ROLE === 'SuperAdmin' || USER_ROLE === 'Uptd';
+
+/* Helper request ke API dengan token (untuk menyimpan zona & koordinat). */
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API_BASE + path, {
+    method: opts.method || 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      ...(TOKEN ? { 'Authorization': 'Bearer ' + TOKEN } : {})
+    },
+    body: opts.body === undefined ? undefined : JSON.stringify(opts.body)
+  });
+  let data = {};
+  try { data = await res.json(); } catch (e) { /* respons non-JSON */ }
+  return { ok: res.ok, status: res.status, data };
+}
 
 let CENTER = [-6.8988, 107.5925];
 let DEFAULT_ZOOM = 17;
 let ZONES = [];
 let GRAVE_DATA = [];
+let UNASSIGNED = [];
 let FACILITY_DATA = [];
 
 try {
@@ -829,14 +985,61 @@ try {
 
   CENTER = json.tpu.center;
   DEFAULT_ZOOM = json.tpu.defaultZoom;
-  ZONES = json.zones;
-  GRAVE_DATA = json.graves;
+  ZONES = (json.zones || []).map(z => {
+    const m = /^zone-(\d+)$/.exec(z.id || '');
+    return { ...z, serverId: m ? Number(m[1]) : null, serverKode: null };
+  });
+  GRAVE_DATA = (json.graves || []).concat((json.unassigned || []).map(u => ({ ...u, block: 'Belum terdata' })));
+  UNASSIGNED = json.unassigned || [];
   FACILITY_DATA = json.facilities;
+
+  const tpuNameEl = document.getElementById('panelTpuName');
+  const uptdNameEl = document.getElementById('panelUptdName');
+  if (json.tpu && json.tpu.namaTpu) tpuNameEl.textContent = json.tpu.namaTpu;
+  if (uptdNameEl && uptdNameEl.dataset.uptd) uptdNameEl.textContent = 'Peta ' + uptdNameEl.dataset.uptd + ' · Kota Bandung';
 
   console.log('Data peta berhasil dimuat dari API:', json);
 } catch (err) {
   console.error('Gagal mengambil data dari API Laravel, peta akan kosong:', err);
   alert('Gagal memuat data peta dari server. Cek console (F12) untuk detail error.');
+}
+
+/* ---- Pilih TPU lewat dropdown (panel kiri) ---- */
+const tpuSelect = document.getElementById('tpuSelect');
+if (tpuSelect) {
+  const applyTpuMeta = () => {
+    const opt = tpuSelect.options[tpuSelect.selectedIndex];
+    const uptdNameEl = document.getElementById('panelUptdName');
+    if (opt) {
+      document.getElementById('panelTpuName').textContent = opt.textContent;
+      if (uptdNameEl) {
+        uptdNameEl.textContent = opt.dataset.uptd ? 'Peta ' + opt.dataset.uptd + ' · Kota Bandung' : 'Peta Kota Bandung';
+      }
+    }
+  };
+  tpuSelect.addEventListener('change', () => {
+    const next = Number(tpuSelect.value);
+    if (!next || next === TPU_ID) return;
+    TPU_ID = next;
+    applyTpuMeta();
+    loadPetaData();
+  });
+
+  if (TOKEN) {
+    try {
+      const tr = await fetch(`${API_BASE}/tpu?per_page=100`, {
+        headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + TOKEN }
+      });
+      if (tr.ok) {
+        const list = (await tr.json()).data || [];
+        tpuSelect.innerHTML = list.map(t =>
+          `<option value="${t.id}" data-uptd="${editEscAttr(t.uptd ? t.uptd.nama_uptd : '')}">${editEsc(t.nama_tpu || 'TPU ' + t.id)}</option>`
+        ).join('') || '<option value="">Tidak ada TPU</option>';
+        tpuSelect.value = String(TPU_ID);
+        applyTpuMeta();
+      }
+    } catch (e) { /* pilih TPU tetap tersedia bila /api/tpu gagal */ }
+  }
 }
 
 /* =========================================================
@@ -1010,7 +1213,8 @@ const BLOCK_META = {
   "Blok T":                       { color: "var(--blok-t)",   hex: "#A88F2E", short: "BLOK T",   icon: "T" },
   "Blok CB":                      { color: "var(--blok-cb)",  hex: "#4E93A3", short: "BLOK CB",  icon: "CB" },
   "Blok CA":                      { color: "var(--blok-ca)",  hex: "#8266A8", short: "BLOK CA",  icon: "CA" },
-  "Pemakaman Belanda (Ereveld)":  { color: "var(--ereveld)",  hex: "#C77F63", short: "EREVELD",  icon: "E" }
+  "Pemakaman Belanda (Ereveld)":  { color: "var(--ereveld)",  hex: "#C77F63", short: "EREVELD",  icon: "E" },
+  "Belum terdata":                { color: "#9a9587", hex: "#9a9587", short: "BELUM TERDATA", icon: "∅" }
 };
 
 /* CATEGORIES sekarang dihitung dinamis (lihat getCategories() di bawah, setelah
@@ -1049,9 +1253,21 @@ ZONES.filter(z => !z.parent).forEach(z => assignBlockMeta(z.name));
    digeser, diperbesar/dikecilkan (tarik sudut), diputar,
    ditambah baru, dan dihapus. Semua murni di browser (state array).
    ========================================================= */
-let zoneIdCounter = 0;
-function makeZone(name, south, north, west, east, parent){
+/* Penghitung id zona lokal dimulai dari id tertinggi yang sudah dipakai area
+   dari server (zone-1, zone-2, …). Tanpa ini, area baru bisa memakai id yang
+   SAMA dengan area yang sudah ter-load dan poligonnya saling membajak
+   (gejala: muncul dua, yang satu bisa digeser yang satu tidak). */
+let zoneIdCounter = ZONES.reduce((mx, z) => {
+  const m = String(z.id || '').match(/^zone-(\d+)$/);
+  return Math.max(mx, m ? parseInt(m[1], 10) : 0);
+}, 0);
+function nextZoneId(){
   zoneIdCounter++;
+  while (ZONES.some(z => z.id === 'zone-' + zoneIdCounter)) zoneIdCounter++;
+  return 'zone-' + zoneIdCounter;
+}
+function makeZone(name, south, north, west, east, parent){
+  const id = nextZoneId();
   const corners = [
     { lat: south, lng: west },
     { lat: south, lng: east },
@@ -1059,7 +1275,7 @@ function makeZone(name, south, north, west, east, parent){
     { lat: north, lng: west }
   ];
   return {
-    id: 'zone-' + zoneIdCounter,
+    id,
     name,
     // Hierarki multi-poligon: null = Blok Utama, string = nama Blok induk
     // (mis. "Blok CB") kalau zona ini adalah sub-blok/cabang (mis. "Blok CB 1")
@@ -1173,6 +1389,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 }).addTo(map);
 
+/* Seed role dari localStorage untuk UI non-kelola (Edit Data dll). Kontrol
+   kelola zone baru muncul setelah role terverifikasi via /api/me di bawah. */
+enforceZoneAccess(USER_ROLE, false);
+
 /* ---- Render polygon zona ---- */
 const zoneLayers = {};
 
@@ -1260,6 +1480,7 @@ function startZoneBodyDrag(zone, e){
     map.getContainer().classList.remove('zone-dragging');
     renderLandmarkMarker(zone);
     reclassifyAllGraves();
+    saveZoneToServer(zone);
   }
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp, { once: true });
@@ -1351,6 +1572,7 @@ function showHandlesForZone(zone){
     setToolbarDragging(false);
     renderLandmarkMarker(zone);
     reclassifyAllGraves();
+    saveZoneToServer(zone);
   });
 
   zone.corners.forEach((c, idx) => {
@@ -1419,6 +1641,7 @@ function showHandlesForZone(zone){
       setToolbarDragging(false);
       renderLandmarkMarker(zone);
       reclassifyAllGraves();
+      saveZoneToServer(zone);
     });
     handleLayers.corners.push(m);
   });
@@ -1448,7 +1671,7 @@ function showHandlesForZone(zone){
     updateCornerHandlePositions(zone);
     handleLayers.rotateLine.setLatLngs([[cen.lat, cen.lng],[ll.lat, ll.lng]]);
   });
-  handleLayers.rotate.on('dragend', () => { setToolbarDragging(false); renderLandmarkMarker(zone); reclassifyAllGraves(); });
+  handleLayers.rotate.on('dragend', () => { setToolbarDragging(false); renderLandmarkMarker(zone); reclassifyAllGraves(); saveZoneToServer(zone); });
 }
 
 /* ---- Pilih / kelola zona ---- */
@@ -1463,6 +1686,88 @@ function deselectZone(){
   clearHandles();
   updateZoneToolbarUI();
 }
+/* =========================================================
+   PERSISTENSI ZONA — seluruh perubahan area blok (tambah, rename,
+   hapus, ubah status, geser/resize/putar) ikut disimpan ke API
+   (/api/blok) supaya tidak hilang saat halaman di-refresh.
+   ========================================================= */
+function deriveBlokKode(name){
+  return ('BLK-' + (name || '').toUpperCase().replace(/[^A-Z0-9\/]+/g, '-').replace(/^-+|-+$/g, '')).slice(0, 80);
+}
+
+function zoneKodeFor(z){
+  if (z.serverKode) return z.serverKode;
+  return deriveBlokKode(z.name) + (z.parent ? '-SUB' : '');
+}
+
+function uniqueBlokKode(zone){
+  const base = deriveBlokKode(zone.name) + (zone.parent ? '-SUB' : '');
+  const used = new Set(ZONES.map(zoneKodeFor).filter(Boolean));
+  if (!used.has(base)) return base;
+  for (let i = 2; i < 100; i++){
+    const cand = `${base}-${i}`;
+    if (!used.has(cand)) return cand;
+  }
+  return base + '-x';
+}
+
+function parentBlokIdFor(zone){
+  if (!zone.parent) return null;
+  const parentZone = ZONES.find(z => !z.parent && z.name === zone.parent && z.serverId);
+  return parentZone ? parentZone.serverId : null;
+}
+
+function rekeyZone(zone, newId, serverId){
+  const oldId = zone.id;
+  zone.id = newId;
+  zone.serverId = serverId;
+  if (zoneLayers[oldId]){ zoneLayers[newId] = zoneLayers[oldId]; delete zoneLayers[oldId]; }
+  if (landmarkMarkers[oldId]){ landmarkMarkers[newId] = landmarkMarkers[oldId]; delete landmarkMarkers[oldId]; }
+}
+
+async function saveZoneToServer(zone, fields = {}){
+  if (!CAN_MANAGE_ZONES()) return;
+  const corners = zone.corners.map(c => ({ lat: c.lat, lng: c.lng }));
+
+  if (!zone.serverId){
+    const oldId = zone.id;
+    const r = await apiFetch('/blok', { method: 'POST', body: {
+      tpu_id: TPU_ID,
+      kode_blok: uniqueBlokKode(zone),
+      nama_blok: zone.name,
+      parent_blok_id: parentBlokIdFor(zone),
+      corners,
+      status_ketersediaan: zone.statusKetersediaan || 'Kosong (Tersedia)'
+    }});
+    if (r.ok){
+      const b = r.data.data;
+      zone.serverKode = b.kode_blok;
+      rekeyZone(zone, 'zone-' + b.id, b.id);
+      if (state.zoneEditId === oldId){
+        state.zoneEditId = zone.id;
+        updateZoneToolbarUI();
+      }
+      refreshZoneToolbarLists();
+      showToast('Area "' + zone.name + '" disimpan ke server');
+    } else {
+      showToast('Gagal menyimpan area "' + zone.name + '": ' + (r.data?.message || 'HTTP ' + r.status));
+    }
+    return;
+  }
+
+  const body = { corners };
+  if (fields.nama) body.nama_blok = zone.name;
+  if (fields.status) body.status_ketersediaan = zone.statusKetersediaan;
+  const r = await apiFetch('/blok/' + zone.serverId, { method: 'PUT', body });
+  if (!r.ok) showToast('Gagal menyimpan area "' + zone.name + '": ' + (r.data?.message || 'HTTP ' + r.status));
+}
+
+async function deleteZoneFromServer(zone){
+  if (!CAN_MANAGE_ZONES() || !zone.serverId) return;
+  const r = await apiFetch('/blok/' + zone.serverId, { method: 'DELETE' });
+  if (!r.ok) showToast('Gagal menghapus area di server: ' + (r.data?.message || 'HTTP ' + r.status));
+}
+
 /* Menambahkan poligon area baru untuk Blok Utama tingkat teratas (FR-19,
    fleksibel). Nama diambil bebas dari input Admin: kalau nama sudah ada,
    ini menambah area/polygon tambahan untuk Blok Utama yang sama (blok
@@ -1487,6 +1792,7 @@ function addZone(name){
   showToast(isNewBlock
     ? `Blok Utama baru "${name}" dibuat — geser, tarik sudut untuk ubah ukuran, atau putar sesuai kebutuhan`
     : `Area tambahan untuk "${name}" ditambahkan — geser, tarik sudut untuk ubah ukuran, atau putar sesuai kebutuhan`);
+  saveZoneToServer(zone);
 }
 
 /* Menambahkan poligon area sub-blok baru yang menginduk ke Blok Utama yang
@@ -1522,6 +1828,7 @@ function addSubZone(parentName, customName){
   const subAddInput = document.getElementById('ztSubAddInput');
   if (subAddInput) subAddInput.value = '';
   showToast(`Sub-blok "${subName}" ditambahkan di bawah "${parentName}" — atur posisi & ukurannya di dalam area induk`);
+  saveZoneToServer(zone);
 }
 
 /* Mengubah nama Blok Utama yang sedang aktif dipilih (dropdown/input pertama).
@@ -1558,6 +1865,7 @@ function renameMainBlock(oldName, newName){
   document.getElementById('ztMainRenameInput').value = '';
   refreshZoneToolbarLists();
   renderAll();
+  mainZones.forEach(z => saveZoneToServer(z, { nama: true }));
   showToast(`Blok Utama "${oldName}" diubah namanya menjadi "${newName}"`);
 }
 
@@ -1582,6 +1890,7 @@ function renameSubBlock(oldName, newName){
   refreshZoneToolbarLists();
   document.getElementById('ztSubSelect').value = newName;
   showToast(`Sub-blok "${oldName}" diubah namanya menjadi "${newName}"`);
+  saveZoneToServer(zone, { nama: true });
 }
 
 /* Menyinkronkan datalist Blok Utama & dropdown Sub-Blok pada toolbar
@@ -1613,6 +1922,7 @@ function deleteSelectedZone(){
   const layer = zoneLayers[zone.id];
   if (layer) { map.removeLayer(layer); delete zoneLayers[zone.id]; }
   removeLandmarkMarker(zone.id);
+  deleteZoneFromServer(zone);
   ZONES.splice(idx, 1);
   clearHandles();
   state.zoneEditId = null;
@@ -1624,6 +1934,7 @@ function deleteSelectedZone(){
 }
 
 function toggleManageMode(){
+  if (!CAN_MANAGE_ZONES()) return;
   state.manageMode = !state.manageMode;
   document.getElementById('editZoneBtn').classList.toggle('active', state.manageMode);
   map.getContainer().classList.toggle('zone-edit-mode', state.manageMode);
@@ -1674,6 +1985,7 @@ function saveZoneStatus(){
   zone.statusKetersediaan = newStatus;
   renderZonePolygon(zone);
   showToast(`Status "${zone.name}" diperbarui menjadi "${STATUS_BLOK_META[newStatus].label}"`);
+  saveZoneToServer(zone, { status: true });
 }
 
 /* =========================================================
@@ -1714,6 +2026,53 @@ function reclassifyAllGraves(){
   renderAll();
 }
 
+/* Memuat ulang SELURUH data peta dari server (zona, makam, almarhum yang belum
+   ditempatkan, fasilitas) dan merender ulang peta + daftar. Dipakai setelah
+   operasi edit/menempatkan almarhum supaya hasilnya langsung tampil konsisten
+   dengan web app (backend yang sama). */
+async function loadPetaData(msg){
+  try {
+    const res = await fetch(`${API_BASE}/tpu/${TPU_ID}/peta-data`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+
+    Object.keys(zoneLayers).forEach(k => { map.removeLayer(zoneLayers[k]); delete zoneLayers[k]; });
+    Object.keys(landmarkMarkers).forEach(k => { map.removeLayer(landmarkMarkers[k]); delete landmarkMarkers[k]; });
+    clearHandles();
+
+    ZONES = (json.zones || []).map(z => {
+      const m = /^zone-(\d+)$/.exec(z.id || '');
+      return { ...z, serverId: m ? Number(m[1]) : null, serverKode: null };
+    });
+    zoneIdCounter = ZONES.reduce((mx, z) => {
+      const mm = String(z.id || '').match(/^zone-(\d+)$/);
+      return Math.max(mx, mm ? parseInt(mm[1], 10) : 0);
+    }, 0);
+    GRAVE_DATA = (json.graves || []).concat((json.unassigned || []).map(u => ({ ...u, block: 'Belum terdata' })));
+    UNASSIGNED = json.unassigned || [];
+    FACILITY_DATA = json.facilities;
+
+    ZONES.filter(z => !z.parent).forEach(z => assignBlockMeta(z.name));
+    ZONES.forEach(renderZonePolygon);
+    ZONES.forEach(renderLandmarkMarker);
+    renderFacilities();
+
+    state.selectedId = null;
+    state.sheetMode = 'list';
+    state.zoneEditId = null;
+    state.manageMode = false;
+    document.getElementById('editZoneBtn').classList.remove('active');
+    document.getElementById('zoneToolbar').style.display = 'none';
+    map.getContainer().classList.remove('zone-edit-mode');
+    refreshZoneToolbarLists();
+    updateZoneToolbarUI();
+    renderAll();
+    if (msg) showToast(msg);
+  } catch (err){
+    showToast('Gagal memuat ulang data peta: ' + err.message);
+  }
+}
+
 /* =========================================================
    FASILITAS / LANDMARK (Bab V SRS — Data Fasilitas/Landmark)
    ========================================================= */
@@ -1730,17 +2089,31 @@ const FACILITY_META = {
   "Fasilitas Umum": { color: "#4A5568", glyph: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>` }
 };
 
-FACILITY_DATA.forEach(f => {
-  const meta = FACILITY_META[f.jenisFasilitas] || FACILITY_META["Fasilitas Umum"];
-  const icon = L.divIcon({
-    className: '',
-    html: `<div class="facility-marker" style="background:${meta.color}">${meta.glyph}</div>`,
-    iconSize: [26, 26], iconAnchor: [13, 24]
+let facilityMarkers = {};
+function clearFacilityMarkers(){
+  Object.keys(facilityMarkers).forEach(k => {
+    if (facilityMarkers[k]) map.removeLayer(facilityMarkers[k]);
+    delete facilityMarkers[k];
   });
-  L.marker([f.latitude, f.longitude], { icon, zIndexOffset: 500 })
-    .addTo(map)
-    .bindPopup(`<div class="popup-name">${f.namaFasilitas}</div><div class="popup-sub">${f.jenisFasilitas}</div>`, { closeButton: false, offset: [0, -20] });
-});
+}
+function renderFacilities(){
+  clearFacilityMarkers();
+  FACILITY_DATA.forEach(f => {
+    const meta = FACILITY_META[f.jenisFasilitas] || FACILITY_META["Fasilitas Umum"];
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="facility-marker" style="background:${meta.color}">${meta.glyph}</div>`,
+      iconSize: [26, 26], iconAnchor: [13, 24]
+    });
+    const m = L.marker([f.latitude, f.longitude], { icon, zIndexOffset: 500 })
+      .addTo(map)
+      .bindPopup(`<div class="popup-name">${f.namaFasilitas}</div><div class="popup-sub">${f.jenisFasilitas}</div>`, { closeButton: false, offset: [0, -20] });
+    facilityMarkers[f.id] = m;
+  });
+}
+renderFacilities();
+
+
 
 /* =========================================================
    FOKUS & HIGHLIGHT BLOK (FR-18) — pengganti fly-to-marker individual.
@@ -1809,6 +2182,7 @@ function showToast(msg){
    HELPERS
    ========================================================= */
 function calcAge(birth, death){
+  if (!birth || !death) return null;
   const b = new Date(birth), d = new Date(death);
   let years = d.getFullYear() - b.getFullYear();
   const m = d.getMonth() - b.getMonth();
@@ -1816,6 +2190,7 @@ function calcAge(birth, death){
   return years;
 }
 function fmtDate(str){
+  if (!str) return '-';
   const d = new Date(str);
   return d.toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
 }
@@ -1825,14 +2200,14 @@ function getFiltered(){
     const matchCat = state.activeCategory === "Semua Blok" || g.block === state.activeCategory;
     if (!matchCat) return false;
 
-    const yearMeninggal = Number(g.meninggalTanggal.slice(0,4));
+    const yearMeninggal = g.meninggalTanggal ? Number(g.meninggalTanggal.slice(0,4)) : 0;
     if (state.yearFrom && yearMeninggal < state.yearFrom) return false;
     if (state.yearTo && yearMeninggal > state.yearTo) return false;
 
     if (!q) return true;
     return g.fullName.toLowerCase().includes(q) ||
-           g.binBinti.toLowerCase().includes(q) ||
-           g.plotNumber.toLowerCase().includes(q) ||
+           (g.binBinti || '').toLowerCase().includes(q) ||
+           (g.plotNumber || '').toLowerCase().includes(q) ||
            (g.noRegistrasi && g.noRegistrasi.toLowerCase().includes(q)) ||
            (g.nik && g.nik.includes(q));
   });
@@ -1876,10 +2251,10 @@ function graveItemHTML(g){
       <div class="grave-icon" style="background:${meta.color}">${meta.icon}</div>
       <div class="grave-info">
         <div class="grave-name">${g.fullName}</div>
-        <div class="grave-sub">${g.binBinti} &middot; wafat usia ${age} th</div>
+        <div class="grave-sub">${g.binBinti} &middot; wafat usia ${age === null ? '-' : age} th</div>
         <div class="grave-badges">
           <span class="badge">${meta.short}</span>
-          <span class="badge">Kav. ${g.plotNumber}</span>
+          <span class="badge">Kav. ${g.plotNumber || '-'}</span>
           <span class="badge">${g.noRegistrasi}</span>
         </div>
       </div>
@@ -1902,7 +2277,8 @@ function maskNik(nik){
 
 const STATUS_META = {
   "Terisi (Aktif Her-Registrasi)": { color: "var(--forest-deep)", label: "Terisi (Aktif Her-Registrasi)" },
-  "Kosong":                        { color: "#9a9587", label: "Kosong" }
+  "Kosong":                        { color: "#9a9587", label: "Kosong" },
+  "Belum ditempatkan":             { color: "#B58A3D", label: "Belum ditempatkan (belum ada makam)" }
 };
 
 function detailCardHTML(g){
@@ -1923,7 +2299,7 @@ function detailCardHTML(g){
       </div>
       <div class="detail-body">
         <div class="age-pill">
-          <span class="num">${age}</span>
+          <span class="num">${age === null ? '-' : age}</span>
           <span class="lbl">tahun usia wafat</span>
           <span class="status-chip" style="background:${statusMeta.color}">${statusMeta.label}</span>
         </div>
@@ -1977,6 +2353,11 @@ function detailCardHTML(g){
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
             Fokus &amp; Sorot Blok
           </button>
+          ${CAN_EDIT_ALMARHUM() && resolveAlmarhumId(g) ? `
+          <button class="btn btn-secondary" id="editAlmarhumBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            Edit Data
+          </button>` : ''}
         </div>
       </div>
     </div>`;
@@ -2033,6 +2414,8 @@ function bindDetailButtons(root, g){
   };
   const focusBtn = root.querySelector('#focusMapBtn');
   if (focusBtn) focusBtn.onclick = () => focusBlock(g.block);
+  const editBtn = root.querySelector('#editAlmarhumBtn');
+  if (editBtn) editBtn.onclick = () => openAlmarhumEditor(g);
   const copyBtn = root.querySelector('#copyCoordBtn');
   if (copyBtn) copyBtn.onclick = () => {
     const centroid = getBlockCentroid(g.block);
@@ -2047,6 +2430,289 @@ function bindDetailButtons(root, g){
       showToast('Koordinat Blok disalin');
     }
   };
+}
+
+/* =========================================================
+   EDIT DATA ALMARHUM — mengedit data lengkap almarhum (identitas,
+   tanggal, alamat) plus lokasi makam (Blok + No. Kavling) langsung
+   dari peta. Semua perubahan disimpan lewat API yang SAMA dengan
+   web app (/api/almarhum/{id}), jadi datanya tetap sinkron di web.
+   Hanya SuperAdmin & AdminUPTD yang boleh mengedit (mode kelola).
+   ========================================================= */
+const CAN_EDIT_ALMARHUM = () => USER_ROLE === 'SuperAdmin' || USER_ROLE === 'Uptd';
+
+function editEsc(v){
+  return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function editEscAttr(v){
+  return editEsc(v).replace(/"/g, '&quot;');
+}
+
+function resolveAlmarhumId(g){
+  if (g.almarhumId) return Number(g.almarhumId);
+  const m = /^alu-(\d+)$/.exec(String(g.id || ''));
+  return m ? Number(m[1]) : null;
+}
+
+function buildEditForm(a, g){
+  const mainBlocks = getMainBlockNames();
+  const hasMakam = !!(a.makam && a.makam.id);
+  const blokName = hasMakam ? (a.makam.blok && a.makam.blok.nama_blok) : null;
+  let currentMain = '', currentSub = '';
+  if (hasMakam && blokName){
+    const zone = ZONES.find(z => z.name === blokName);
+    currentMain = (zone && zone.parent) ? zone.parent : blokName;
+    currentSub = (zone && zone.parent) ? blokName : '';
+  }
+  const currentPlot = hasMakam
+    ? (a.makam.nomor_makam || '')
+    : (g.plotNumber ? String(g.plotNumber).split('-').pop() : '');
+
+  const opt = (n, sel) => `<option value="${editEscAttr(n)}" ${n === sel ? 'selected' : ''}>${editEsc(n)}</option>`;
+  const mainOpts = mainBlocks.map(n => opt(n, currentMain)).join('');
+  const blokPlaceholder = hasMakam
+    ? `— Tidak diubah —`
+    : `— Tanpa blok (tetap belum ditempatkan) —`;
+
+  return `
+    <div class="edit-grid">
+      <div class="edit-field full"><label>Nama Lengkap <span class="req">*</span></label>
+        <input id="e-nama" value="${editEscAttr(a.nama_lengkap || '')}"></div>
+
+      <div class="edit-field"><label>No. Registrasi</label>
+        <input id="e-noreg" value="${editEscAttr(a.no_registrasi || '')}"></div>
+      <div class="edit-field"><label>NIK</label>
+        <input id="e-nik" value="${editEscAttr(a.nik || '')}"></div>
+      <div class="edit-field"><label>Bin / Binti</label>
+        <input id="e-bin" value="${editEscAttr(a.bin_binti || '')}"></div>
+      <div class="edit-field"><label>Jenis Kelamin <span class="req">*</span></label>
+        <select id="e-jk">
+          <option value="L" ${(a.jenis_kelamin || 'L') === 'L' ? 'selected' : ''}>Laki-laki</option>
+          <option value="P" ${a.jenis_kelamin === 'P' ? 'selected' : ''}>Perempuan</option>
+        </select></div>
+      <div class="edit-field"><label>Agama</label>
+        <input id="e-agama" value="${editEscAttr(a.agama || '')}"></div>
+
+      <div class="edit-field"><label>Tanggal Wafat <span class="req">*</span></label>
+        <input type="date" id="e-wafat" value="${editEscAttr(a.tanggal_wafat ? String(a.tanggal_wafat).slice(0, 10) : '')}"></div>
+      <div class="edit-field"><label>Tanggal Lahir</label>
+        <input type="date" id="e-lahir" value="${editEscAttr(a.tanggal_lahir ? String(a.tanggal_lahir).slice(0, 10) : '')}"></div>
+
+      <div class="edit-field"><label>Tanggal Dimakamkan</label>
+        <input type="date" id="e-dimakamkan" value="${editEscAttr(a.tanggal_dimakamkan ? String(a.tanggal_dimakamkan).slice(0, 10) : '')}"></div>
+      <div class="edit-field"><label>RT</label>
+        <input id="e-rt" value="${editEscAttr(a.rt || '')}"></div>
+      <div class="edit-field"><label>RW</label>
+        <input id="e-rw" value="${editEscAttr(a.rw || '')}"></div>
+
+      <div class="edit-field full"><label>Alamat (Detail)</label>
+        <textarea id="e-alamat">${editEsc(a.alamat || '')}</textarea></div>
+      <div class="edit-field"><label>Nama Jalan</label>
+        <input id="e-jalan" value="${editEscAttr(a.alamat_jalan || '')}"></div>
+      <div class="edit-field"><label>No. Rumah</label>
+        <input id="e-norumah" value="${editEscAttr(a.no_rumah || '')}"></div>
+      <div class="edit-field"><label>Kelurahan</label>
+        <input id="e-kelurahan" value="${editEscAttr(a.kelurahan || '')}"></div>
+      <div class="edit-field"><label>Kecamatan</label>
+        <input id="e-kecamatan" value="${editEscAttr(a.kecamatan || '')}"></div>
+      <div class="edit-field"><label>Kota / Kabupaten</label>
+        <input id="e-kota" value="${editEscAttr(a.kota_kabupaten || '')}"></div>
+      <div class="edit-field"><label>Provinsi</label>
+        <input id="e-provinsi" value="${editEscAttr(a.provinsi || '')}"></div>
+
+      <div class="edit-section-title">Lokasi Makam${hasMakam ? ` (sekarang: ${editEsc(blokName)} &middot; ${editEsc(currentPlot || '-')})` : ' — almarhum belum ditempatkan'}</div>
+      <div class="edit-field"><label>Blok Utama</label>
+        <select id="e-blok">
+          <option value="" ${!currentMain ? 'selected' : ''}>${editEsc(blokPlaceholder)}</option>
+          ${hasMakam ? `<option value="none">— Lepaskan dari makam —</option>` : ''}
+          ${mainOpts}
+        </select></div>
+      <div class="edit-field"><label>Sub-Blok</label>
+        <select id="e-subblok"><option value="">— tanpa sub-blok —</option></select></div>
+      <div class="edit-field"><label>No. Kavling</label>
+        <input id="e-kavling" value="${editEscAttr(currentPlot)}" placeholder="mis. 0012"></div>
+
+      <div class="edit-field"><label>Latitude (koordinat)</label>
+        <input id="e-lat" type="number" step="any" value="${editEscAttr(a.makam && a.makam.koordinat ? a.makam.koordinat.latitude : '')}" placeholder="-6.8988000"></div>
+      <div class="edit-field"><label>Longitude (koordinat)</label>
+        <input id="e-lng" type="number" step="any" value="${editEscAttr(a.makam && a.makam.koordinat ? a.makam.koordinat.longitude : '')}" placeholder="107.5925000"></div>
+      <div class="edit-field full"><label>Catatan Lokasi Makam</label>
+        <input id="e-catatan" value="${editEscAttr(a.makam && a.makam.keterangan ? a.makam.keterangan : '')}" placeholder="mis. Blok A1 petak 001"></div>
+    </div>
+    <div class="edit-actions">
+      <button class="edit-btn cancel" id="editCancelBtn">Batal</button>
+      <button class="edit-btn save" id="editSaveBtn">Simpan Perubahan</button>
+    </div>`;
+}
+
+function refreshSubBlockSelect(selected){
+  const blokVal = document.getElementById('e-blok').value;
+  const el = document.getElementById('e-subblok');
+  const subs = (blokVal && blokVal !== 'none') ? getSubZonesOf(blokVal) : [];
+  if (subs.length){
+    el.innerHTML = `<option value="">— tanpa sub-blok —</option>` +
+      subs.map(s => `<option value="${editEscAttr(s.name)}" ${s.name === selected ? 'selected' : ''}>${editEsc(s.name)}</option>`).join('');
+  } else {
+    el.innerHTML = `<option value="">— tanpa sub-blok —</option>`;
+  }
+}
+
+async function openAlmarhumEditor(g){
+  const alId = resolveAlmarhumId(g);
+  if (!alId){ showToast('Data ini tidak dapat diedit'); return; }
+  const modal = document.getElementById('editModal');
+  const body = document.getElementById('editModalBody');
+  modal.style.display = 'flex';
+  document.getElementById('editModalTitle').textContent = 'Edit Data Almarhum';
+  body.innerHTML = '<p style="color:#5B6155;padding:10px 2px;">Memuat data…</p>';
+  document.getElementById('editModalClose').onclick = closeEditModal;
+
+  try {
+    const res = await fetch(`${API_BASE}/almarhum/${alId}`, {
+      headers: { 'Accept': 'application/json', ...(TOKEN ? { 'Authorization': 'Bearer ' + TOKEN } : {}) }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    const a = json.data ?? json;
+    body.innerHTML = buildEditForm(a, g);
+
+    document.getElementById('editCancelBtn').onclick = closeEditModal;
+    document.getElementById('editSaveBtn').onclick = () => saveAlmarhumEdit(g);
+
+    const blokSelect = document.getElementById('e-blok');
+    blokSelect.addEventListener('change', () => refreshSubBlockSelect(''));
+
+    const blokName = (a.makam && a.makam.blok) ? a.makam.blok.nama_blok : null;
+    let currentSub = '';
+    if (blokName){
+      const zone = ZONES.find(z => z.name === blokName);
+      if (zone && zone.parent) currentSub = blokName;
+    }
+    refreshSubBlockSelect(currentSub);
+  } catch (e){
+    body.innerHTML = '<div style="padding:14px 2px;color:#A5453A;">Gagal memuat data: ' + editEsc(e.message) + '</div>';
+  }
+}
+
+function closeEditModal(){
+  document.getElementById('editModal').style.display = 'none';
+}
+
+async function saveAlmarhumEdit(g){
+  const alId = resolveAlmarhumId(g);
+  if (!alId){ showToast('Data ini tidak memiliki almarhum terkait'); return; }
+  const val = id => document.getElementById(id).value;
+
+  const namaLengkap = val('e-nama').trim();
+  const tanggalWafat = val('e-wafat');
+  if (!namaLengkap){ showToast('Nama Lengkap wajib diisi'); return; }
+  if (!tanggalWafat){ showToast('Tanggal Wafat wajib diisi'); return; }
+
+  const payload = {
+    no_registrasi: val('e-noreg') || null,
+    nik: val('e-nik') || null,
+    nama_lengkap: namaLengkap,
+    bin_binti: val('e-bin') || null,
+    jenis_kelamin: val('e-jk') || 'L',
+    agama: val('e-agama') || null,
+    tanggal_lahir: val('e-lahir') || null,
+    tanggal_wafat: tanggalWafat,
+    tanggal_dimakamkan: val('e-dimakamkan') || null,
+    alamat: val('e-alamat'),
+    alamat_jalan: val('e-jalan') || null,
+    no_rumah: val('e-norumah') || null,
+    rt: val('e-rt') || null,
+    rw: val('e-rw') || null,
+    kelurahan: val('e-kelurahan') || null,
+    kecamatan: val('e-kecamatan') || null,
+    kota_kabupaten: val('e-kota') || null,
+    provinsi: val('e-provinsi') || null
+  };
+
+  const blokVal = val('e-blok');
+  const subVal = val('e-subblok');
+  const kavling = val('e-kavling').trim();
+  const lat = val('e-lat'), lng = val('e-lng');
+  const oldMakamId = (g.makamId && Number(g.makamId)) || null;
+
+  const btn = document.getElementById('editSaveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan…';
+
+  try {
+    let makamIdPayload;
+
+    if (blokVal === 'none'){
+      // lepaskan dari makam (kalau ada)
+      makamIdPayload = null;
+    } else if (blokVal === ''){
+      // tidak diubah: biarkan makam sekarang apa adanya
+      if (oldMakamId && (lat || lng)) makamIdPayload = oldMakamId;
+    } else {
+      const zoneName = subVal || blokVal;
+      const zone = ZONES.find(z => z.serverId && z.name === zoneName);
+      if (!zone){
+        showToast('Area blok "' + zoneName + '" belum terhubung ke server');
+        btn.disabled = false; btn.textContent = 'Simpan Perubahan';
+        return;
+      }
+      const baseKode = zone.serverKode || (deriveBlokKode(zone.name) + (zone.parent ? '-SUB' : ''));
+
+      if (oldMakamId && zone.name === g.block){
+        // tetap di makam yang sama — cukup sinkronkan no. kavling bila berubah
+        makamIdPayload = oldMakamId;
+        if (kavling && kavling !== (g.nomorMakam || '')){
+          const r0 = await apiFetch('/makam/' + oldMakamId, { method: 'PUT', body: {
+            nomor_makam: kavling,
+            kode_makam: baseKode + '-' + kavling
+          }});
+          if (!r0.ok){
+            showToast('Gagal memperbarui no. kavling: ' + (r0.data?.message || 'HTTP ' + r0.status));
+            btn.disabled = false; btn.textContent = 'Simpan Perubahan';
+            return;
+          }
+        }
+      } else {
+        // almarhum pindah / baru ditempatkan → buat makam baru di blok tsb
+        const nomor = kavling || ('P' + Math.floor(1000 + Math.random() * 9000));
+        const r1 = await apiFetch('/makam', { method: 'POST', body: {
+          blok_id: zone.serverId,
+          kode_makam: baseKode + '-' + nomor,
+          nomor_makam: nomor,
+          status: 'kosong'
+        }});
+        if (!r1.ok){
+          closeEditModal();
+          showToast('Gagal membuat makam: ' + (r1.data?.message || 'HTTP ' + r1.status));
+          return;
+        }
+        makamIdPayload = r1.data.data.id;
+      }
+    }
+
+    if (makamIdPayload !== undefined) payload.makam_id = makamIdPayload;
+    if (lat) payload.latitude = Number(lat);
+    if (lng) payload.longitude = Number(lng);
+    payload.catatan_makam = val('e-catatan') || null;
+
+    const r = await apiFetch('/almarhum/' + alId, { method: 'PUT', body: payload });
+    if (!r.ok){
+      if (r.data && r.data.errors){
+        const msgs = Object.values(r.data.errors).flat().join('; ');
+        showToast('Gagal menyimpan: ' + msgs);
+      } else {
+        showToast('Gagal menyimpan: ' + (r.data?.message || 'HTTP ' + r.status));
+      }
+      btn.disabled = false; btn.textContent = 'Simpan Perubahan';
+      return;
+    }
+
+    closeEditModal();
+    await loadPetaData('Data "' + payload.nama_lengkap + '" berhasil diperbarui dan tersimpan ke web');
+  } catch (e){
+    showToast('Gagal menyimpan: ' + e.message);
+    btn.disabled = false; btn.textContent = 'Simpan Perubahan';
+  }
 }
 
 /* =========================================================
@@ -2141,6 +2807,8 @@ function flyToGrave(g){
 /* =========================================================
    MAP CONTROLS
    ========================================================= */
+/* Verifikasi role ke server (/api/me) setelah seluruh inisialisasi selesai */
+bootZoneAccess();
 document.getElementById('editZoneBtn').onclick = () => toggleManageMode();
 document.getElementById('ztStatusSaveBtn').onclick = () => saveZoneStatus();
 

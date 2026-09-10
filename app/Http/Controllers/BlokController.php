@@ -6,6 +6,7 @@ use App\Models\AdminTpu;
 use App\Models\Blok;
 use App\Models\SuperAdmin;
 use App\Models\Uptd;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -24,11 +25,10 @@ class BlokController extends Controller
 
         if ($user instanceof AdminTpu) {
             $query->where('tpu_id', $user->tpu_id);
-        } elseif ($user instanceof Uptd) {
-            $query->whereHas('tpu', fn ($q) => $q->where('uptd_id', $user->id));
         } elseif ($request->filled('tpu_id')) {
             $query->where('tpu_id', $request->tpu_id);
         }
+        // SuperAdmin & AdminUptd (semua akun) melihat SELURUH data tanpa filter wilayah.
 
         $perPage = min((int) $request->input('per_page', 15), 100);
 
@@ -53,6 +53,7 @@ class BlokController extends Controller
         if ($user instanceof AdminTpu) {
             $tpuId = $user->tpu_id;
         } else {
+            // SuperAdmin & AdminUptd (semua akun): boleh memilih TPU mana pun
             $rules['tpu_id'] = ['required', 'exists:tpus,id'];
             $tpuId = $request->tpu_id;
         }
@@ -86,6 +87,8 @@ class BlokController extends Controller
             'corners' => $request->corners,
             'status_ketersediaan' => $request->status_ketersediaan ?? 'Kosong (Tersedia)',
         ]);
+
+        ActivityLogger::log($request->user(), 'create', 'Menambah blok ' . $blok->nama_blok, ['tpu_id' => $tpuId]);
 
         return response()->json(['message' => 'Blok berhasil ditambahkan', 'data' => $blok], 201);
     }
@@ -121,6 +124,8 @@ class BlokController extends Controller
 
         $blok->update($validator->validated());
 
+        ActivityLogger::log($request->user(), 'update', 'Mengubah blok ' . $blok->nama_blok, ['tpu_id' => $blok->tpu_id]);
+
         return response()->json(['message' => 'Blok berhasil diperbarui', 'data' => $blok]);
     }
 
@@ -136,19 +141,19 @@ class BlokController extends Controller
 
         $blok->delete();
 
+        ActivityLogger::log($request->user(), 'delete', 'Menghapus blok ' . $blok->nama_blok, ['tpu_id' => $blok->tpu_id]);
+
         return response()->json(['message' => 'Blok berhasil dihapus']);
     }
 
     private function authorizeAccess($user, Blok $blok, bool $writeOnly = false): bool
     {
         if ($user instanceof AdminTpu) {
-            return $blok->tpu_id === $user->tpu_id;
+            // AdminTPU boleh melihat blok TPU-nya; TIDAK boleh edit (writeOnly -> false)
+            return $blok->tpu_id === $user->tpu_id && ! $writeOnly;
         }
 
-        if (! $writeOnly && $user instanceof Uptd) {
-            return $blok->tpu->uptd_id === $user->id;
-        }
-
-        return $user instanceof SuperAdmin;
+        // AdminUptd (semua akun) mengelola seluruh data tanpa filter wilayah
+        return $user instanceof Uptd || $user instanceof SuperAdmin;
     }
 }

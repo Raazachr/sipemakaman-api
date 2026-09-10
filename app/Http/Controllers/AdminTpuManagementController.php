@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdminTpu;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -40,6 +41,8 @@ class AdminTpuManagementController extends Controller
         }
 
         $adminTpu = AdminTpu::create($validator->validated());
+
+        ActivityLogger::log($request->user(), 'create', 'Menambah Admin TPU ' . $adminTpu->nama_lengkap, ['tpu_id' => $adminTpu->tpu_id]);
 
         return response()->json([
             'message' => 'Admin TPU berhasil ditambahkan',
@@ -79,15 +82,19 @@ class AdminTpuManagementController extends Controller
 
         $adminTpu->update($data);
 
+        ActivityLogger::log($request->user(), 'update', 'Mengubah Admin TPU ' . $adminTpu->nama_lengkap, ['tpu_id' => $adminTpu->tpu_id]);
+
         return response()->json([
             'message' => 'Admin TPU berhasil diperbarui',
             'data' => $adminTpu->load('tpu'),
         ]);
     }
 
-    public function destroy(AdminTpu $adminTpu)
+    public function destroy(Request $request, AdminTpu $adminTpu)
     {
         $adminTpu->delete();
+
+        ActivityLogger::log($request->user(), 'delete', 'Menghapus Admin TPU ' . $adminTpu->nama_lengkap, ['tpu_id' => $adminTpu->tpu_id]);
 
         return response()->json(['message' => 'Admin TPU berhasil dihapus']);
     }

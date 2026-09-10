@@ -7,7 +7,10 @@ use App\Models\Blok;
 use App\Models\Fasilitas;
 use App\Models\KoordinatMakam;
 use App\Models\Makam;
+use App\Models\SuperAdmin;
 use App\Models\Tpu;
+use App\Models\Uptd;
+use App\Services\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -37,6 +40,7 @@ class PetaDataController extends Controller
             ],
             'zones' => $this->buildZones($tpu),
             'graves' => $this->buildGraves($tpu),
+            'unassigned' => $this->buildUnassigned(),
             'facilities' => $this->buildFacilities($tpu),
         ]);
     }
@@ -48,6 +52,10 @@ class PetaDataController extends Controller
      */
     public function updateKoordinat(Request $request, Makam $makam): JsonResponse
     {
+        $user = $request->user();
+
+        // AdminUptd (semua akun) & SuperAdmin boleh mengubah koordinat makam mana pun
+
         $validator = Validator::make($request->all(), [
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
@@ -64,6 +72,8 @@ class PetaDataController extends Controller
                 'longitude' => $request->longitude,
             ]
         );
+
+        ActivityLogger::log($request->user(), 'update', 'Mengubah koordinat makam ' . $makam->kode_makam, ['tpu_id' => $makam->blok->tpu_id]);
 
         return response()->json([
             'message' => 'Koordinat makam berhasil diperbarui',
@@ -93,7 +103,7 @@ class PetaDataController extends Controller
     private function buildGraves(Tpu $tpu): array
     {
         return Makam::whereHas('blok', fn ($q) => $q->where('tpu_id', $tpu->id))
-            ->with(['blok', 'almarhum'])
+            ->with(['blok', 'almarhum', 'koordinat'])
             ->get()
             ->map(function (Makam $makam) {
                 $blok = $makam->blok;
@@ -101,6 +111,9 @@ class PetaDataController extends Controller
 
                 return [
                     'id' => (string) $makam->id,
+                    'makamId' => (int) $makam->id,
+                    'almarhumId' => $almarhum ? (int) $almarhum->id : null,
+                    'blokId' => $blok?->id,
                     'noRegistrasi' => $almarhum?->no_registrasi,
                     'fullName' => $almarhum?->nama_lengkap,
                     'nik' => $almarhum?->nik,
@@ -113,8 +126,41 @@ class PetaDataController extends Controller
                     'kecamatan' => $almarhum?->kecamatan,
                     'block' => $blok?->nama_blok,
                     'plotNumber' => $blok ? $blok->kode_blok . '-' . $makam->nomor_makam : null,
+                    'nomorMakam' => $makam->nomor_makam,
                     'statusPetak' => $makam->status_petak,
                     'status' => $makam->status,
+                    'koordinat' => $makam->koordinat
+                        ? [
+                            'lat' => (float) $makam->koordinat->latitude,
+                            'lng' => (float) $makam->koordinat->longitude,
+                        ]
+                        : null,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function buildUnassigned(): array
+    {
+        // Almarhum yang sudah tercatat di tabel tapi belum ditempatkan ke makam
+        // (hasil impor Excel tanpa Blok/Nomor Makam). Ditampilkan sebagai entri
+        // "Belum terdata" di daftar peta.html supaya nama-namanya tidak hilang.
+        return Almarhum::whereNull('makam_id')
+            ->get(['id', 'no_registrasi', 'nama_lengkap', 'bin_binti', 'alamat_jalan', 'tanggal_wafat'])
+            ->map(function (Almarhum $a) {
+                return [
+                    'id' => 'alu-' . $a->id,
+                    'noRegistrasi' => $a->no_registrasi,
+                    'fullName' => $a->nama_lengkap,
+                    'binBinti' => $a->bin_binti,
+                    'meninggalTanggal' => $a->tanggal_wafat?->format('Y-m-d'),
+                    'alamatJalan' => $a->alamat_jalan,
+                    'block' => null,
+                    'plotNumber' => null,
+                    'statusPetak' => 'Belum ditempatkan',
+                    'status' => null,
+                    'koordinat' => null,
                 ];
             })
             ->values()

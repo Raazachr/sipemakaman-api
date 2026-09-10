@@ -137,8 +137,9 @@ class LaporanController extends Controller
         if ($user instanceof AdminTpu) {
             return $tpu->id === $user->tpu_id;
         }
+        // SuperAdmin & AdminUptd (semua akun): boleh lihat laporan semua TPU
         if ($user instanceof Uptd) {
-            return $tpu->uptd_id === $user->id;
+            return true;
         }
 
         return $user instanceof SuperAdmin;

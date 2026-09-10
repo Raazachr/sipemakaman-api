@@ -7,6 +7,7 @@ use App\Models\AhliWaris;
 use App\Models\Almarhum;
 use App\Models\SuperAdmin;
 use App\Models\Uptd;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -23,11 +24,30 @@ class AhliWarisController extends Controller
         $user = $request->user();
         if ($user instanceof AdminTpu) {
             $query->whereHas('almarhum.makam.blok', fn ($q) => $q->where('tpu_id', $user->tpu_id));
-        } elseif ($user instanceof Uptd) {
-            $query->whereHas('almarhum.makam.blok.tpu', fn ($q) => $q->where('uptd_id', $user->id));
+        }
+        // SuperAdmin & AdminUptd (semua akun) melihat SELURUH data tanpa filter wilayah.
+
+        // Pencarian umum: nama / NIK / hubungan / nama almarhum
+        if ($request->filled('q')) {
+            $like = '%'.$request->q.'%';
+            $query->where(function ($w) use ($like) {
+                $w->where('nama_lengkap', 'like', $like)
+                    ->orWhere('nik', 'like', $like)
+                    ->orWhere('hubungan', 'like', $like)
+                    ->orWhere('no_telepon', 'like', $like)
+                    ->orWhereHas('almarhum', fn ($a) => $a->where('nama_lengkap', 'like', $like));
+            });
         }
 
-        return response()->json($query->get());
+        // Sort (whitelist kolom yang aman)
+        $sortable = ['id', 'nama_lengkap', 'nik', 'hubungan', 'no_telepon', 'created_at'];
+        $sortBy = in_array($request->input('sort_by'), $sortable, true) ? $request->input('sort_by') : 'id';
+        $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortBy, $sortDir);
+
+        $perPage = min((int) $request->input('per_page', 15), 100);
+
+        return response()->json($query->paginate($perPage));
     }
 
     public function store(Request $request)
@@ -35,6 +55,7 @@ class AhliWarisController extends Controller
         $validator = Validator::make($request->all(), [
             'almarhum_id' => ['required', 'exists:almarhums,id'],
             'nama_lengkap' => ['required', 'string', 'max:255'],
+            'nik' => ['nullable', 'string', 'max:20'],
             'hubungan' => ['required', 'string', 'max:100'],
             'alamat' => ['nullable', 'string'],
             'alamat_jalan' => ['nullable', 'string'],
@@ -60,6 +81,8 @@ class AhliWarisController extends Controller
 
         $ahliWaris = AhliWaris::create($validator->validated());
 
+        ActivityLogger::log($request->user(), 'create', 'Menambah ahli waris ' . $ahliWaris->nama_lengkap, ['tpu_id' => $almarhum->makam?->blok?->tpu_id]);
+
         return response()->json([
             'message' => 'Ahli waris berhasil ditambahkan',
             'data' => $ahliWaris,
@@ -82,7 +105,9 @@ class AhliWarisController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
+            'almarhum_id' => ['sometimes', 'required', 'exists:almarhums,id'],
             'nama_lengkap' => ['sometimes', 'required', 'string', 'max:255'],
+            'nik' => ['nullable', 'string', 'max:20'],
             'hubungan' => ['sometimes', 'required', 'string', 'max:100'],
             'alamat' => ['nullable', 'string'],
             'alamat_jalan' => ['nullable', 'string'],
@@ -100,7 +125,19 @@ class AhliWarisController extends Controller
             return response()->json(['message' => 'Data tidak valid', 'errors' => $validator->errors()], 422);
         }
 
-        $ahliWaris->update($validator->validated());
+        $data = $validator->validated();
+
+        // Jika almarhum dipindahkan, otorisasi terhadap almarhum yang baru juga
+        if (! empty($data['almarhum_id']) && (int) $data['almarhum_id'] !== (int) $ahliWaris->almarhum_id) {
+            $almarhumBaru = Almarhum::findOrFail($data['almarhum_id']);
+            if (! $this->authorizeAlmarhum($request->user(), $almarhumBaru, true)) {
+                return response()->json(['message' => 'Anda tidak memiliki akses ke almarhum tujuan ini'], 403);
+            }
+        }
+
+        $ahliWaris->update($data);
+
+        ActivityLogger::log($request->user(), 'update', 'Mengubah ahli waris ' . $ahliWaris->nama_lengkap, ['tpu_id' => $ahliWaris->almarhum->makam?->blok?->tpu_id]);
 
         return response()->json([
             'message' => 'Ahli waris berhasil diperbarui',
@@ -116,25 +153,24 @@ class AhliWarisController extends Controller
 
         $ahliWaris->delete();
 
+        ActivityLogger::log($request->user(), 'delete', 'Menghapus ahli waris ' . $ahliWaris->nama_lengkap, ['tpu_id' => $ahliWaris->almarhum->makam?->blok?->tpu_id]);
+
         return response()->json(['message' => 'Ahli waris berhasil dihapus']);
     }
 
     private function authorizeAlmarhum($user, Almarhum $almarhum, bool $writeOnly = false): bool
     {
         if (! $almarhum->makam_id) {
-            return $user instanceof SuperAdmin || $user instanceof AdminTpu;
+            return $user instanceof SuperAdmin || $user instanceof AdminTpu || $user instanceof Uptd;
         }
 
         $blok = $almarhum->makam->blok;
 
         if ($user instanceof AdminTpu) {
-            return $blok->tpu_id === $user->tpu_id;
+            return $blok->tpu_id === $user->tpu_id && ! $writeOnly;
         }
 
-        if (! $writeOnly && $user instanceof Uptd) {
-            return $blok->tpu->uptd_id === $user->id;
-        }
-
-        return $user instanceof SuperAdmin;
+        // AdminUptd (semua akun) mengelola seluruh data tanpa filter wilayah
+        return $user instanceof Uptd || $user instanceof SuperAdmin;
     }
 }

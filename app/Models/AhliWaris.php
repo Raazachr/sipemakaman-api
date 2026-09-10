@@ -12,6 +12,7 @@ class AhliWaris extends Model
     protected $fillable = [
         'almarhum_id',
         'nama_lengkap',
+        'nik',
         'hubungan',
         'alamat',
         'alamat_jalan',

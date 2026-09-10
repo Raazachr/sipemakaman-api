@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\AdminTpu;
 use App\Models\Fasilitas;
 use App\Models\SuperAdmin;
+use App\Models\Tpu;
+use App\Models\Uptd;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -20,6 +23,7 @@ class FasilitasController extends Controller
         } elseif ($request->filled('tpu_id')) {
             $query->where('tpu_id', $request->tpu_id);
         }
+        // SuperAdmin & AdminUptd (semua akun) melihat SELURUH data tanpa filter wilayah.
 
         $perPage = min((int) $request->input('per_page', 15), 100);
 
@@ -40,6 +44,7 @@ class FasilitasController extends Controller
         if ($user instanceof AdminTpu) {
             $tpuId = $user->tpu_id;
         } else {
+            // SuperAdmin & AdminUptd (semua akun): boleh memilih TPU mana pun
             $rules['tpu_id'] = ['required', 'exists:tpus,id'];
             $tpuId = $request->tpu_id;
         }
@@ -56,6 +61,8 @@ class FasilitasController extends Controller
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
         ]);
+
+        ActivityLogger::log($request->user(), 'create', 'Menambah fasilitas ' . $fasilitas->nama_fasilitas, ['tpu_id' => $tpuId]);
 
         return response()->json(['message' => 'Fasilitas berhasil ditambahkan', 'data' => $fasilitas], 201);
     }
@@ -88,6 +95,8 @@ class FasilitasController extends Controller
 
         $fasilitas->update($validator->validated());
 
+        ActivityLogger::log($request->user(), 'update', 'Mengubah fasilitas ' . $fasilitas->nama_fasilitas, ['tpu_id' => $fasilitas->tpu_id]);
+
         return response()->json(['message' => 'Fasilitas berhasil diperbarui', 'data' => $fasilitas]);
     }
 
@@ -99,6 +108,8 @@ class FasilitasController extends Controller
 
         $fasilitas->delete();
 
+        ActivityLogger::log($request->user(), 'delete', 'Menghapus fasilitas ' . $fasilitas->nama_fasilitas, ['tpu_id' => $fasilitas->tpu_id]);
+
         return response()->json(['message' => 'Fasilitas berhasil dihapus']);
     }
 
@@ -108,6 +119,7 @@ class FasilitasController extends Controller
             return $fasilitas->tpu_id === $user->tpu_id;
         }
 
-        return $user instanceof SuperAdmin;
+        // AdminUptd (semua akun) mengelola seluruh data tanpa filter wilayah
+        return $user instanceof Uptd || $user instanceof SuperAdmin;
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AdminTpuAuthController;
+use App\Http\Controllers\Auth\NipAuthController;
 use App\Http\Controllers\Auth\PemohonAuthController;
 use App\Http\Controllers\Auth\SuperAdminAuthController;
 use App\Http\Controllers\Auth\UptdAuthController;
@@ -23,6 +24,9 @@ use App\Http\Controllers\PengajuanController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AlmarhumImportController;
+use App\Http\Controllers\DeleteRequestController;
+use App\Http\Controllers\ActivityLogController;
 
 
 /*
@@ -33,6 +37,9 @@ use App\Http\Controllers\DashboardController;
 
 // --- Super Admin ---
 Route::post('/super-admin/login', [SuperAdminAuthController::class, 'login']);
+
+// --- Login terpadu via NIP (SuperAdmin / AdminUPTD / AdminTPU) ---
+Route::post('/login', [NipAuthController::class, 'login']);
 
 // --- UPTD ---
 Route::post('/uptd/login', [UptdAuthController::class, 'login']);
@@ -97,17 +104,20 @@ Route::middleware('auth:sanctum')->group(function () {
 | DI BAWAH baris-baris routes dari Fase 5.
 |--------------------------------------------------------------------------
 */
-// ---- Tulis (create/update/delete): hanya AdminTpu (TPU miliknya) atau SuperAdmin ----
-Route::middleware(['auth:sanctum', 'user_type:AdminTpu,SuperAdmin'])->group(function () {
+// ---- Tulis Blok/Makam/Fasilitas ----
+// Create: AdminTpu (TPU-nya), Uptd (wilayah-nya), SuperAdmin
+Route::middleware(['auth:sanctum', 'user_type:AdminTpu,SuperAdmin,Uptd'])->group(function () {
     Route::post('/blok', [BlokController::class, 'store']);
+    Route::post('/makam', [MakamController::class, 'store']);
+    Route::post('/fasilitas', [FasilitasController::class, 'store']);
+});
+
+// Update/Delete: TANPA AdminTpu (AdminTPU tidak boleh edit, hapus via permintaan)
+Route::middleware(['auth:sanctum', 'user_type:SuperAdmin,Uptd'])->group(function () {
     Route::put('/blok/{blok}', [BlokController::class, 'update']);
     Route::delete('/blok/{blok}', [BlokController::class, 'destroy']);
-
-    Route::post('/makam', [MakamController::class, 'store']);
     Route::put('/makam/{makam}', [MakamController::class, 'update']);
     Route::delete('/makam/{makam}', [MakamController::class, 'destroy']);
-
-    Route::post('/fasilitas', [FasilitasController::class, 'store']);
     Route::put('/fasilitas/{fasilitas}', [FasilitasController::class, 'update']);
     Route::delete('/fasilitas/{fasilitas}', [FasilitasController::class, 'destroy']);
 });
@@ -146,15 +156,24 @@ Route::middleware(['auth:sanctum', 'user_type:SuperAdmin'])->group(function () {
     Route::delete('/admin-tpu/{adminTpu}', [AdminTpuManagementController::class, 'destroy']);
 });
 
-// ---- Almarhum & Ahli Waris — tulis: hanya AdminTpu (TPU miliknya) atau SuperAdmin ----
-Route::middleware(['auth:sanctum', 'user_type:AdminTpu,SuperAdmin'])->group(function () {
+// ---- Almarhum & Ahli Waris: Create (AdminTpu/Uptd/SuperAdmin) ----
+Route::middleware(['auth:sanctum', 'user_type:AdminTpu,Uptd,SuperAdmin'])->group(function () {
     Route::post('/almarhum', [AlmarhumController::class, 'store']);
+    Route::post('/ahli-waris', [AhliWarisController::class, 'store']);
+});
+
+// ---- Almarhum & Ahli Waris: Update/Delete TANPA AdminTpu ----
+Route::middleware(['auth:sanctum', 'user_type:Uptd,SuperAdmin'])->group(function () {
     Route::put('/almarhum/{almarhum}', [AlmarhumController::class, 'update']);
     Route::delete('/almarhum/{almarhum}', [AlmarhumController::class, 'destroy']);
-
-    Route::post('/ahli-waris', [AhliWarisController::class, 'store']);
     Route::put('/ahli-waris/{ahliWaris}', [AhliWarisController::class, 'update']);
     Route::delete('/ahli-waris/{ahliWaris}', [AhliWarisController::class, 'destroy']);
+});
+
+// ---- Import almarhum via file Excel: Super Admin & Admin UPTD ----
+Route::middleware(['auth:sanctum', 'user_type:Uptd,SuperAdmin'])->group(function () {
+    Route::get('/almarhum/import/template', [AlmarhumImportController::class, 'template']);
+    Route::post('/almarhum/import', [AlmarhumImportController::class, 'store']);
 });
 
 // ---- Almarhum & Ahli Waris — baca: semua role yang sudah login (difilter di controller) ----
@@ -198,8 +217,8 @@ Route::middleware('auth:sanctum')->group(function () {
 | DI BAWAH baris-baris routes dari Fase 9.
 |--------------------------------------------------------------------------
 */
-// ---- Laporan: UPTD (cakupannya), AdminTpu (TPU-nya), atau SuperAdmin ----
-Route::middleware(['auth:sanctum', 'user_type:Uptd,AdminTpu,SuperAdmin'])->group(function () {
+// ---- Laporan: UPTD (cakupannya) atau SuperAdmin ----
+Route::middleware(['auth:sanctum', 'user_type:Uptd,SuperAdmin'])->group(function () {
     Route::get('/laporan', [LaporanController::class, 'rekapitulasi']);
     Route::get('/laporan/export', [LaporanController::class, 'export']);
 });
@@ -219,9 +238,31 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-// ---- Koordinat Makam: tulis hanya AdminTpu atau SuperAdmin ----
-Route::middleware(['auth:sanctum', 'user_type:AdminTpu,SuperAdmin'])->group(function () {
+// ---- Koordinat Makam (ubah titik di peta): SuperAdmin & AdminUptd, TANPA AdminTpu ----
+Route::middleware(['auth:sanctum', 'user_type:SuperAdmin,Uptd'])->group(function () {
     Route::put('/makam/{makam}/koordinat', [PetaDataController::class, 'updateKoordinat']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| ROUTES PERMINTAAN HAPUS (delete-request) & LOG AKTIVITAS
+|--------------------------------------------------------------------------
+*/
+// Kirim permintaan hapus: hanya AdminTPU
+Route::middleware(['auth:sanctum', 'user_type:AdminTpu'])->group(function () {
+    Route::post('/delete-request', [DeleteRequestController::class, 'store']);
+});
+
+// Lihat & proses permintaan hapus: SuperAdmin & AdminUptd
+Route::middleware(['auth:sanctum', 'user_type:SuperAdmin,Uptd'])->group(function () {
+    Route::get('/delete-request', [DeleteRequestController::class, 'index']);
+    Route::post('/delete-request/{deleteRequest}/approve', [DeleteRequestController::class, 'approve']);
+    Route::post('/delete-request/{deleteRequest}/reject', [DeleteRequestController::class, 'reject']);
+});
+
+// Log aktivitas: SuperAdmin (semua) & AdminUptd (wilayah-nya)
+Route::middleware(['auth:sanctum', 'user_type:SuperAdmin,Uptd'])->group(function () {
+    Route::get('/activity-logs', [ActivityLogController::class, 'index']);
 });
 
 /*

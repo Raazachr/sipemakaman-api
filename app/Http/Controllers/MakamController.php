@@ -7,6 +7,7 @@ use App\Models\Blok;
 use App\Models\Makam;
 use App\Models\SuperAdmin;
 use App\Models\Uptd;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -19,15 +20,31 @@ class MakamController extends Controller
 
         if ($user instanceof AdminTpu) {
             $query->whereHas('blok', fn ($q) => $q->where('tpu_id', $user->tpu_id));
-        } elseif ($user instanceof Uptd) {
-            $query->whereHas('blok.tpu', fn ($q) => $q->where('uptd_id', $user->id));
         } elseif ($request->filled('blok_id')) {
             $query->where('blok_id', $request->blok_id);
         }
+        // SuperAdmin & AdminUptd (semua akun) melihat SELURUH data tanpa filter wilayah.
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+
+        // Pencarian umum: kode / nomor makam / nama blok / nama almarhum
+        if ($request->filled('q')) {
+            $like = '%'.$request->q.'%';
+            $query->where(function ($w) use ($like) {
+                $w->where('kode_makam', 'like', $like)
+                    ->orWhere('nomor_makam', 'like', $like)
+                    ->orWhereHas('blok', fn ($b) => $b->where('nama_blok', 'like', $like)->orWhere('kode_blok', 'like', $like))
+                    ->orWhereHas('almarhum', fn ($a) => $a->where('nama_lengkap', 'like', $like));
+            });
+        }
+
+        // Sort (whitelist kolom yang aman)
+        $sortable = ['id', 'kode_makam', 'nomor_makam', 'blok_id', 'status', 'created_at'];
+        $sortBy = in_array($request->input('sort_by'), $sortable, true) ? $request->input('sort_by') : 'id';
+        $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortBy, $sortDir);
 
         $perPage = min((int) $request->input('per_page', 15), 100);
 
@@ -70,6 +87,8 @@ class MakamController extends Controller
             'keterangan' => $request->keterangan,
         ]);
 
+        ActivityLogger::log($request->user(), 'create', 'Menambah makam ' . $makam->kode_makam, ['tpu_id' => $blok->tpu_id]);
+
         return response()->json(['message' => 'Makam berhasil ditambahkan', 'data' => $makam], 201);
     }
 
@@ -102,6 +121,8 @@ class MakamController extends Controller
 
         $makam->update($validator->validated());
 
+        ActivityLogger::log($request->user(), 'update', 'Mengubah makam ' . $makam->kode_makam, ['tpu_id' => $makam->blok->tpu_id]);
+
         return response()->json(['message' => 'Makam berhasil diperbarui', 'data' => $makam]);
     }
 
@@ -112,6 +133,8 @@ class MakamController extends Controller
         }
 
         $makam->delete();
+
+        ActivityLogger::log($request->user(), 'delete', 'Menghapus makam ' . $makam->kode_makam, ['tpu_id' => $makam->blok->tpu_id]);
 
         return response()->json(['message' => 'Makam berhasil dihapus']);
     }
@@ -127,7 +150,8 @@ class MakamController extends Controller
             return $blok->tpu_id === $user->tpu_id;
         }
 
-        return $user instanceof SuperAdmin;
+        // AdminUptd (semua akun) mengelola seluruh data tanpa filter wilayah
+        return $user instanceof Uptd || $user instanceof SuperAdmin;
     }
 
     private function authorizeMakam($user, Makam $makam, bool $writeOnly = false): bool
@@ -135,13 +159,11 @@ class MakamController extends Controller
         $blok = $makam->blok;
 
         if ($user instanceof AdminTpu) {
-            return $blok->tpu_id === $user->tpu_id;
+            // AdminTPU boleh melihat makam TPU-nya; TIDAK boleh edit/hapus
+            return $blok->tpu_id === $user->tpu_id && ! $writeOnly;
         }
 
-        if (! $writeOnly && $user instanceof Uptd) {
-            return $blok->tpu->uptd_id === $user->id;
-        }
-
-        return $user instanceof SuperAdmin;
+        // AdminUptd (semua akun) mengelola seluruh data tanpa filter wilayah
+        return $user instanceof Uptd || $user instanceof SuperAdmin;
     }
 }

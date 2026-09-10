@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Uptd;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -38,6 +39,8 @@ class UptdController extends Controller
         }
 
         $uptd = Uptd::create($validator->validated());
+
+        ActivityLogger::log($request->user(), 'create', 'Menambah UPTD ' . $uptd->nama_uptd, ['uptd_id' => $uptd->id]);
 
         return response()->json([
             'message' => 'UPTD berhasil ditambahkan',
@@ -79,15 +82,19 @@ class UptdController extends Controller
 
         $uptd->update($data);
 
+        ActivityLogger::log($request->user(), 'update', 'Mengubah UPTD ' . $uptd->nama_uptd, ['uptd_id' => $uptd->id]);
+
         return response()->json([
             'message' => 'UPTD berhasil diperbarui',
             'data' => $uptd,
         ]);
     }
 
-    public function destroy(Uptd $uptd)
+    public function destroy(Request $request, Uptd $uptd)
     {
         $uptd->delete();
+
+        ActivityLogger::log($request->user(), 'delete', 'Menghapus UPTD ' . $uptd->nama_uptd, ['uptd_id' => $uptd->id]);
 
         return response()->json(['message' => 'UPTD berhasil dihapus']);
     }
