@@ -96,7 +96,7 @@
 
 <footer class="border-t border-gray-200 bg-white">
     <div class="mx-auto max-w-7xl px-4 py-8 text-center text-sm text-gray-500">
-        © {{ date('Y') }} SIPEMAKAMAN — Sistem Informasi Pemetaan & Data Pemakaman Umum
+        © {{ date('Y') }} SIPEMAKAMAN — UPTD I Kota Bandung
     </div>
 </footer>
 @endsection

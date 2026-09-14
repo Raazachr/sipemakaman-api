@@ -344,6 +344,12 @@
     position:absolute; right:16px; bottom:28px; z-index:500;
     display:flex; flex-direction:column; gap:8px;
   }
+  .credit{
+    position:absolute; left:50%; bottom:12px; transform:translateX(-50%);
+    z-index:490; pointer-events:none;
+    font-size:11px; color:#7a8075; background:rgba(250,248,243,0.75);
+    border-radius:8px; padding:3px 10px; white-space:nowrap;
+  }
   .map-ctrl-btn{
     width:42px; height:42px; border-radius:11px;
     background:#fff; border:1px solid var(--line);
@@ -442,6 +448,32 @@
   .zt-selected-label{ font-size:12.5px; color:var(--ink-soft); flex:1; min-width:140px; }
   .zt-selected-label strong{ color:var(--ink); }
   .zt-selected-label .zt-parent-tag{ font-style:italic; margin-left:4px; }
+  .zt-fac-hint{ font-size:11.5px; color:var(--gold); font-style:italic; margin:2px 0 6px; }
+  .zt-fac-list{ display:flex; flex-direction:column; gap:6px; margin:6px 0 2px; }
+  .zt-fac-item{
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+    padding:6px 9px; border:1.5px solid var(--line); border-radius:9px;
+    background:rgba(255,255,255,0.04);
+  }
+  .zt-fac-item .zt-fac-main{ flex:1; min-width:120px; font-size:12.5px; color:var(--stone); line-height:1.3; }
+  .zt-fac-item .zt-fac-main .zt-fac-type{ display:block; font-size:11px; color:var(--ink-soft); }
+  .zt-fac-btns{ display:flex; gap:4px; }
+  .zt-mini-btn{
+    border:none; border-radius:6px; padding:3px 8px; font-size:11.5px; font-weight:600;
+    cursor:pointer; font-family:'Inter',sans-serif; background:var(--stone-dim); color:var(--ink);
+  }
+  .zt-mini-btn:hover{ background:var(--line); }
+  .zt-mini-btn.sm-edit{ background:rgba(60,99,73,0.14); color:var(--forest-deep); }
+  .zt-mini-btn.sm-edit:hover{ background:rgba(60,99,73,0.22); }
+  .zt-mini-btn.sm-del{ background:rgba(165,52,45,0.12); color:var(--danger); }
+  .zt-mini-btn.sm-del:hover{ background:rgba(165,52,45,0.22); }
+  .zt-fac-edit{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; width:100%; }
+  .zt-fac-edit input, .zt-fac-edit select{
+    flex:1; min-width:130px;
+    border:1.5px solid var(--forest-soft); border-radius:8px;
+    padding:6px 9px; font-size:12.5px; font-family:'Inter',sans-serif; color:var(--ink);
+    background:#fff;
+  }
   .zt-hint{ font-size:11px; color:var(--ink-soft); font-style:italic; line-height:1.4; }
 
   .zone-handle{
@@ -847,11 +879,22 @@
         </select>
         <button class="zt-btn zt-btn-primary" id="ztStatusSaveBtn">Simpan Status</button>
       </div>
-      <div class="zt-hint">Klik area = pilih (posisi tetap) &middot; tarik panah tengah = geser &middot; tarik kotak sudut = ubah ukuran &middot; tarik lingkaran emas = putar</div>
+
+      <div class="zt-group-label">Fasilitas / Landmark</div>
+      <div class="zt-row" id="ztFacAddRow">
+        <input type="text" id="ztFacInput" class="zt-text" placeholder="Nama fasilitas baru…" autocomplete="off">
+        <select id="ztFacJenis"></select>
+        <button class="zt-btn zt-btn-secondary" id="ztFacAddBtn" title="Klik tombol, lalu klik peta untuk menempatkan fasilitas">+ Tambah</button>
+      </div>
+      <div class="zt-fac-hint" id="ztFacHint" style="display:none;">Klik titik di peta untuk menempatkan fasilitas…</div>
+      <div class="zt-fac-list" id="ztFacList"></div>
+      <div class="zt-hint">Klik area = pilih (posisi tetap) &middot; tarik panah tengah = geser &middot; tarik kotak sudut = ubah ukuran &middot; tarik lingkaran emas = putar &middot; geser pin fasilitas untuk memindahkannya</div>
       </div>
     </div>
 
     <div id="map"></div>
+
+<div class="credit" aria-hidden="true">© <span id="creditYear"></span> SIPEMAKAMAN — UPTD I Kota Bandung</div>
 
     <div class="map-controls">
       <div class="map-ctrl-btn" id="editZoneBtn" title="Kelola area blok (tambah/geser/ubah ukuran/putar/hapus)">
@@ -903,6 +946,8 @@
    otomatis menunggu sampai data ini selesai diambil dulu.
    ========================================================= */
 const API_BASE = 'http://localhost:8000/api';
+const creditYear = document.getElementById('creditYear');
+if (creditYear) creditYear.textContent = String(new Date().getFullYear());
 let TPU_ID = 1; // TPU aktif; dapat diganti lewat dropdown pemilih TPU
 
 /* Hak akses kelola zona blok: hanya SuperAdmin & Admin UPTD yang boleh
@@ -939,6 +984,7 @@ function enforceZoneAccess(role, verified) {
 function refreshRoleUI() {
   try {
     if (typeof GRAVE_DATA !== 'undefined' && GRAVE_DATA.length && state) renderAll();
+    if (typeof map !== 'undefined' && map) { renderFacilities(); renderFacilityList(); }
   } catch (e) { /* data/belum siap */ }
 }
 
@@ -1022,24 +1068,23 @@ if (tpuSelect) {
     if (!next || next === TPU_ID) return;
     TPU_ID = next;
     applyTpuMeta();
-    loadPetaData();
+    loadPetaData('', true);
   });
 
-  if (TOKEN) {
-    try {
-      const tr = await fetch(`${API_BASE}/tpu?per_page=100`, {
-        headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + TOKEN }
-      });
-      if (tr.ok) {
-        const list = (await tr.json()).data || [];
-        tpuSelect.innerHTML = list.map(t =>
-          `<option value="${t.id}" data-uptd="${editEscAttr(t.uptd ? t.uptd.nama_uptd : '')}">${editEsc(t.nama_tpu || 'TPU ' + t.id)}</option>`
-        ).join('') || '<option value="">Tidak ada TPU</option>';
-        tpuSelect.value = String(TPU_ID);
-        applyTpuMeta();
-      }
-    } catch (e) { /* pilih TPU tetap tersedia bila /api/tpu gagal */ }
-  }
+  // Populasi daftar TPU (endpoint publik — pemohon tanpa login juga butuh)
+  try {
+    const tr = await fetch(`${API_BASE}/tpu?per_page=100`, {
+      headers: { 'Accept': 'application/json', ...(TOKEN ? { 'Authorization': 'Bearer ' + TOKEN } : {}) }
+    });
+    if (tr.ok) {
+      const list = (await tr.json()).data || [];
+      tpuSelect.innerHTML = list.map(t =>
+        `<option value="${t.id}" data-uptd="${editEscAttr(t.uptd ? t.uptd.nama_uptd : '')}">${editEsc(t.nama_tpu || 'TPU ' + t.id)}</option>`
+      ).join('') || '<option value="">Tidak ada TPU</option>';
+      tpuSelect.value = String(TPU_ID);
+      applyTpuMeta();
+    }
+  } catch (e) { /* dropdown tetap dikosongkan bila /api/tpu gagal */ }
 }
 
 /* =========================================================
@@ -1939,6 +1984,9 @@ function toggleManageMode(){
   document.getElementById('editZoneBtn').classList.toggle('active', state.manageMode);
   map.getContainer().classList.toggle('zone-edit-mode', state.manageMode);
   document.getElementById('zoneToolbar').style.display = state.manageMode ? 'flex' : 'none';
+  // Fasilitas: tampilkan daftar & buat marker bisa digeser saat mode kelola aktif
+  renderFacilities();
+  renderFacilityList();
   if (!state.manageMode) deselectZone();
   else {
     document.getElementById('zoneToolbar').classList.remove('zt-collapsed', 'zt-dragging');
@@ -2030,7 +2078,7 @@ function reclassifyAllGraves(){
    ditempatkan, fasilitas) dan merender ulang peta + daftar. Dipakai setelah
    operasi edit/menempatkan almarhum supaya hasilnya langsung tampil konsisten
    dengan web app (backend yang sama). */
-async function loadPetaData(msg){
+async function loadPetaData(msg, flyTo){
   try {
     const res = await fetch(`${API_BASE}/tpu/${TPU_ID}/peta-data`);
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -2056,6 +2104,7 @@ async function loadPetaData(msg){
     ZONES.forEach(renderZonePolygon);
     ZONES.forEach(renderLandmarkMarker);
     renderFacilities();
+    renderFacilityList();
 
     state.selectedId = null;
     state.sheetMode = 'list';
@@ -2067,6 +2116,38 @@ async function loadPetaData(msg){
     refreshZoneToolbarLists();
     updateZoneToolbarUI();
     renderAll();
+
+    // TPU tanpa data blok/makam: tampilkan penanda pusat supaya tidak kosong
+    if (!ZONES.length && json.tpu && json.tpu.center) {
+      const clat = Number(json.tpu.center[0]);
+      const clng = Number(json.tpu.center[1]);
+      if (isFinite(clat) && isFinite(clng) && (clat || clng)) {
+        const cm = L.circleMarker([clat, clng], { radius: 14, color: '#B4894F', weight: 2, fillColor: '#B4894F', fillOpacity: 0.25 })
+          .bindPopup(`<div class="popup-name">${editEsc(json.tpu.namaTpu || 'TPU')}</div><div class="popup-sub">Belum ada data blok/makam untuk TPU ini</div>`);
+        map.addLayer(cm);
+        landmarkMarkers['center-placeholder'] = cm;
+      }
+    }
+
+    // Pindahkan kamera ke pusat TPU yang dipilih (agar tidak tampak blank)
+    if (flyTo && json.tpu) {
+      const plat = Number(json.tpu.center?.[0]);
+      const plng = Number(json.tpu.center?.[1]);
+      const pz = Number(json.tpu.defaultZoom) || 16;
+      if (isFinite(plat) && isFinite(plng) && (plat || plng)) {
+        CENTER = [plat, plng];
+        DEFAULT_ZOOM = pz;
+        map.flyTo(CENTER, DEFAULT_ZOOM, { duration: 0.9 });
+      }
+    }
+
+    const totalData = (json.zones || []).length + (json.graves || []).length + (json.facilities || []).length;
+    if (totalData === 0) {
+      showToast('Belum ada data peta untuk ' + ((json.tpu && json.tpu.namaTpu) || ('TPU ' + TPU_ID)));
+    } else if (flyTo) {
+      showToast('Menampilkan ' + ((json.tpu && json.tpu.namaTpu) || ('TPU ' + TPU_ID)));
+    }
+
     if (msg) showToast(msg);
   } catch (err){
     showToast('Gagal memuat ulang data peta: ' + err.message);
@@ -2084,10 +2165,17 @@ const MOCK_FACILITY_DATA = [
 // FACILITY_DATA sudah dideklarasikan & diisi dari hasil fetch API di bagian atas script
 
 const FACILITY_META = {
+  "Tempat Ibadah": { color: "#2F855A", glyph: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M4 21v-8l5-4 5 4v8"/><path d="M9 9V5"/><path d="M4 5h10"/><path d="M9 5V3"/><line x1="2" y1="21" x2="16" y2="21"/></svg>` },
   "Kantor": { color: "#4A5568", glyph: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3"><rect x="4" y="3" width="16" height="18" rx="1"/><line x1="9" y1="8" x2="9" y2="8.01"/><line x1="15" y1="8" x2="15" y2="8.01"/><line x1="9" y1="12" x2="9" y2="12.01"/><line x1="15" y1="12" x2="15" y2="12.01"/><line x1="9" y1="16" x2="15" y2="16"/></svg>` },
   "Gerbang": { color: "#4A5568", glyph: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3"><path d="M4 21V9l8-5 8 5v12"/><line x1="4" y1="21" x2="20" y2="21"/><line x1="9" y1="21" x2="9" y2="13"/><line x1="15" y1="21" x2="15" y2="13"/></svg>` },
+  "Mushola": { color: "#2F855A", glyph: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M4 21v-8l5-4 5 4v8"/><path d="M9 9V5"/><path d="M4 5h10"/><path d="M9 5V3"/><line x1="2" y1="21" x2="16" y2="21"/></svg>` },
+  "Toilet": { color: "#3182CE", glyph: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><rect x="4" y="4" width="7" height="16"/><rect x="13" y="4" width="7" height="16"/></svg>` },
+  "Pos Satpam": { color: "#718096", glyph: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M12 3l8 4v6c0 4-3.4 7-8 8-4.6-1-8-4-8-8V7l8-4z"/><path d="M9 12h6"/><path d="M12 9v6"/></svg>` },
+  "Taman": { color: "#48BB78", glyph: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 22v-6"/><path d="M12 16c0-4 3-7 7-7 0 4-3 7-7 7z"/><path d="M12 16c0-3-2.2-5-6-5v5c2.5 0 4.5 1.2 6 5"/></svg>` },
   "Fasilitas Umum": { color: "#4A5568", glyph: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>` }
 };
+
+const FACILITY_JENIS_OPTIONS = ['Tempat Ibadah', 'Mushola', 'Kantor', 'Gerbang', 'Toilet', 'Pos Satpam', 'Taman', 'Fasilitas Umum'];
 
 let facilityMarkers = {};
 function clearFacilityMarkers(){
@@ -2098,6 +2186,7 @@ function clearFacilityMarkers(){
 }
 function renderFacilities(){
   clearFacilityMarkers();
+  const canManage = CAN_MANAGE_ZONES();
   FACILITY_DATA.forEach(f => {
     const meta = FACILITY_META[f.jenisFasilitas] || FACILITY_META["Fasilitas Umum"];
     const icon = L.divIcon({
@@ -2105,13 +2194,133 @@ function renderFacilities(){
       html: `<div class="facility-marker" style="background:${meta.color}">${meta.glyph}</div>`,
       iconSize: [26, 26], iconAnchor: [13, 24]
     });
-    const m = L.marker([f.latitude, f.longitude], { icon, zIndexOffset: 500 })
+    const m = L.marker([f.latitude, f.longitude], { icon, zIndexOffset: 500, draggable: canManage })
       .addTo(map)
       .bindPopup(`<div class="popup-name">${f.namaFasilitas}</div><div class="popup-sub">${f.jenisFasilitas}</div>`, { closeButton: false, offset: [0, -20] });
+    if (canManage){
+      m.on('dragend', () => {
+        const ll = m.getLatLng();
+        apiFetch('/fasilitas/' + f.id, { method: 'PUT', body: { latitude: ll.lat, longitude: ll.lng } }).then(r => {
+          if (!r.ok) { showToast((r.data && r.data.message) || 'Gagal menyimpan posisi fasilitas'); renderFacilities(); return; }
+          f.latitude = ll.lat; f.longitude = ll.lng;
+          showToast('Posisi fasilitas diperbarui');
+          renderFacilityList();
+        });
+      });
+    }
     facilityMarkers[f.id] = m;
   });
 }
 renderFacilities();
+
+/* =========================================================
+   MANAJEMEN FASILITAS (mode kelola — SuperAdmin & AdminUPTD)
+   Tambah (klik peta), ubah nama/jenis, pindahkan (geser pin), hapus.
+   ========================================================= */
+let pendingFacility = null;
+let armingFacilityDelete = null;
+
+function renderFacilityList(){
+  const listEl = document.getElementById('ztFacList');
+  if (!listEl) return;
+  const canManage = CAN_MANAGE_ZONES();
+  if (!canManage){ listEl.innerHTML = ''; return; }
+  if (!FACILITY_DATA.length){ listEl.innerHTML = '<div class="zt-hint">Belum ada fasilitas di TPU ini.</div>'; return; }
+  listEl.innerHTML = FACILITY_DATA.map(f =>
+    `<div class="zt-fac-item" data-fid="${f.id}">
+       <div class="zt-fac-main"><span>${editEsc(f.namaFasilitas || '')}</span><span class="zt-fac-type">${editEsc(f.jenisFasilitas || '')}</span></div>
+       <div class="zt-fac-btns">
+         <button class="zt-mini-btn sm-edit" data-act="edit">Edit</button>
+         <button class="zt-mini-btn sm-del" data-act="del">Hapus</button>
+       </div>
+     </div>`
+  ).join('');
+  listEl.querySelectorAll('.zt-fac-item').forEach(item => {
+    const fid = item.dataset.fid;
+    item.querySelector('[data-act="edit"]').addEventListener('click', () => renderFacilityEditForm(item, fid));
+    item.querySelector('[data-act="del"]').addEventListener('click', (e) => confirmDeleteFacility(fid, e.target));
+  });
+}
+
+function renderFacilityEditForm(item, fid){
+  const f = FACILITY_DATA.find(x => String(x.id) === String(fid));
+  if (!f) return;
+  item.querySelector('.zt-fac-btns').style.display = 'none';
+  item.querySelector('.zt-fac-main').style.display = 'none';
+  const form = document.createElement('div');
+  form.className = 'zt-fac-edit';
+  form.innerHTML = `
+    <input type="text" value="${editEscAttr(f.nama_fasilitas)}" maxlength="255">
+    <select>${FACILITY_JENIS_OPTIONS.map(j => `<option value="${editEscAttr(j)}" ${j === f.jenisFasilitas ? 'selected' : ''}>${editEsc(j)}</option>`).join('')}</select>
+    <button class="zt-mini-btn sm-edit" data-act="save">Simpan</button>
+    <button class="zt-mini-btn" data-act="cancel">Batal</button>`;
+  item.appendChild(form);
+  form.querySelector('[data-act="save"]').addEventListener('click', async () => {
+    const nama = form.querySelector('input').value.trim();
+    const jenis = form.querySelector('select').value;
+    if (!nama){ showToast('Nama fasilitas tidak boleh kosong'); return; }
+    const r = await apiFetch('/fasilitas/' + fid, { method: 'PUT', body: { nama_fasilitas: nama, jenis_fasilitas: jenis } });
+    if (!r.ok) return showToast((r.data && r.data.message) || 'Gagal menyimpan fasilitas');
+    f.nama_fasilitas = nama; f.jenisFasilitas = jenis;
+    clearFacilityMarkers(); renderFacilities(); renderFacilityList();
+    showToast('Fasilitas berhasil diperbarui');
+  });
+  form.querySelector('[data-act="cancel"]').addEventListener('click', () => {
+    item.querySelector('.zt-fac-btns').style.display = 'flex';
+    item.querySelector('.zt-fac-main').style.display = 'block';
+    form.remove();
+  });
+}
+
+function confirmDeleteFacility(fid, btn){
+  if (armingFacilityDelete !== fid){
+    armingFacilityDelete = fid;
+    const orig = btn.textContent;
+    btn.textContent = 'Yakin?';
+    showToast('Klik "Yakin?" sekali lagi untuk menghapus fasilitas');
+    setTimeout(() => {
+      btn.textContent = orig;
+      if (armingFacilityDelete === fid) armingFacilityDelete = null;
+    }, 3000);
+    return;
+  }
+  armingFacilityDelete = null;
+  deleteFacility(fid);
+}
+
+async function deleteFacility(fid){
+  const r = await apiFetch('/fasilitas/' + fid, { method: 'DELETE' });
+  if (!r.ok) return showToast((r.data && r.data.message) || 'Gagal menghapus fasilitas');
+  FACILITY_DATA = FACILITY_DATA.filter(x => String(x.id) !== String(fid));
+  clearFacilityMarkers(); renderFacilities(); renderFacilityList();
+  showToast('Fasilitas berhasil dihapus');
+}
+
+async function createFacilityAt(lat, lng){
+  if (!pendingFacility) return;
+  const p = pendingFacility;
+  pendingFacility = null;
+  document.getElementById('ztFacHint').style.display = 'none';
+  const r = await apiFetch('/fasilitas', {
+    method: 'POST',
+    body: { nama_fasilitas: p.nama, jenis_fasilitas: p.jenis, latitude: lat, longitude: lng, tpu_id: TPU_ID }
+  });
+  if (!r.ok) return showToast((r.data && r.data.message) || 'Gagal menambah fasilitas');
+  FACILITY_DATA.push({ id: String(r.data.data.id), namaFasilitas: p.nama, jenisFasilitas: p.jenis, latitude: lat, longitude: lng });
+  clearFacilityMarkers(); renderFacilities(); renderFacilityList();
+  showToast('Fasilitas "' + p.nama + '" ditambahkan');
+}
+
+function armFacilityPlacement(){
+  if (!CAN_MANAGE_ZONES()) return;
+  const namaEl = document.getElementById('ztFacInput');
+  const nama = namaEl ? namaEl.value.trim() : '';
+  if (!nama){ showToast('Tulis nama fasilitas terlebih dahulu'); if (namaEl) namaEl.focus(); return; }
+  pendingFacility = { nama, jenis: document.getElementById('ztFacJenis').value };
+  document.getElementById('ztFacHint').style.display = 'block';
+  showToast('Klik di peta untuk menempatkan fasilitas');
+  if (namaEl) namaEl.value = '';
+}
 
 
 
@@ -2818,6 +3027,14 @@ document.getElementById('ztCollapseBtn').onclick = () => {
 
 refreshZoneToolbarLists();
 
+// Populasi pilihan jenis fasilitas & tombol tambah fasilitas
+const ztFacJenis = document.getElementById('ztFacJenis');
+if (ztFacJenis) ztFacJenis.innerHTML = FACILITY_JENIS_OPTIONS.map(j => `<option value="${editEscAttr(j)}">${editEsc(j)}</option>`).join('');
+document.getElementById('ztFacAddBtn').onclick = () => armFacilityPlacement();
+document.getElementById('ztFacInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('ztFacAddBtn').click();
+});
+
 document.getElementById('ztAddBtn').onclick = () => {
   addZone(document.getElementById('ztMainInput').value);
 };
@@ -2839,7 +3056,8 @@ document.getElementById('ztSubRenameBtn').onclick = () => {
 
 document.getElementById('ztDeleteBtn').onclick = () => deleteSelectedZone();
 document.getElementById('ztDoneBtn').onclick = () => deselectZone();
-map.on('click', () => {
+map.on('click', (e) => {
+  if (pendingFacility){ createFacilityAt(e.latlng.lat, e.latlng.lng); return; }
   if (state.manageMode && state.zoneEditId) deselectZone();
 });
 document.getElementById('zoomInBtn').onclick = () => map.zoomIn();

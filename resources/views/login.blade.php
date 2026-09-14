@@ -48,6 +48,7 @@
                 </p>
             </div>
         </div>
+        <p class="mt-8 text-center text-sm text-sky-200">© {{ date('Y') }} SIPEMAKAMAN — UPTD I Kota Bandung</p>
     </div>
 </div>
 

@@ -89,11 +89,13 @@ Route::middleware(['auth:sanctum', 'user_type:SuperAdmin'])->group(function () {
     Route::delete('/tpu/{tpu}', [TpuController::class, 'destroy']);
 });
 
-// ---- TPU: index & show boleh diakses SEMUA role yang sudah login ----
+// ---- TPU: daftar TPU PUBLIK (diperlukan pemilih TPU di peta pemohon) ----
 // (Super Admin lihat semua, UPTD lihat cakupannya, AdminTpu lihat TPU-nya,
-//  Pemohon lihat untuk keperluan memilih TPU tujuan pemakaman)
+//  Pemohon tanpa login pakai daftar ini untuk memilih TPU tujuan pemakaman)
+Route::get('/tpu', [TpuController::class, 'index']);
+
+// ---- TPU: detail hanya untuk role yang sudah login ----
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/tpu', [TpuController::class, 'index']);
     Route::get('/tpu/{tpu}', [TpuController::class, 'show']);
 });
 

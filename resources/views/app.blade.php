@@ -174,9 +174,9 @@
         // ==================== LAYOUT ====================
         function renderLayout() {
             appRoot.innerHTML = `
-                <div class="flex min-h-screen overflow-hidden">
+                <div class="flex h-screen overflow-hidden">
                     <!-- Sidebar -->
-                    <aside class="hidden w-64 shrink-0 flex-col bg-sky-800 text-white md:flex">
+                    <aside class="hidden w-64 shrink-0 flex-col overflow-y-auto bg-sky-800 text-white md:flex">
                         <div class="border-b border-sky-700">
                             <div class="flex h-1.5">
                                 <span class="flex-1 bg-sky-400"></span>
@@ -210,15 +210,18 @@
                     </aside>
 
                     <!-- Konten -->
-                    <div class="flex min-w-0 flex-1 flex-col">
+                    <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
                         <!-- Topbar (mobile) -->
-                        <header class="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 md:hidden">
+                        <header class="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 md:hidden">
                             <span class="text-lg font-bold text-sky-700">🏛️ SIPEMAKAMAN</span>
                             <button id="mobileMenuBtn" class="rounded-lg border border-gray-300 p-2">☰</button>
                         </header>
 
-                        <main class="min-w-0 flex-1 overflow-x-hidden p-6">
+                        <main class="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-6">
                             <div id="content"><!-- konten halaman --></div>
+                            <footer class="mt-8 border-t border-gray-200 pt-4 text-center text-xs text-gray-400">
+                                © ${new Date().getFullYear()} SIPEMAKAMAN — UPTD I Kota Bandung
+                            </footer>
                         </main>
                     </div>
                 </div>
