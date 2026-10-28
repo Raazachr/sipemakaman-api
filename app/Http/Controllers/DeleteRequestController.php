@@ -30,6 +30,13 @@ class DeleteRequestController extends Controller
         $query = DeleteRequest::with(['requestable', 'requestedBy'])
             ->latest('id');
 
+        // AdminUptd hanya melihat permintaan hapus di wilayahnya sendiri;
+        // SuperAdmin melihat seluruhnya. Tanpa filter ini AdminUptd bisa melihat
+        // pengaju, alasan, dan target permintaan milik UPTD lain.
+        if ($request->user() instanceof Uptd) {
+            $query->where('uptd_id', $request->user()->getKey());
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -206,9 +213,16 @@ class DeleteRequestController extends Controller
 
     private function authorizeReview($user, DeleteRequest $deleteRequest): bool
     {
-        if ($user instanceof SuperAdmin || $user instanceof Uptd) {
-            // Semua akun AdminUptd boleh menyetujui/menolak permintaan hapus
+        if ($user instanceof SuperAdmin) {
             return true;
+        }
+
+        // AdminUptd hanya boleh menyetujui/menolak permintaan di wilayahnya
+        // sendiri. Jika dibiarkan untuk semua AdminUptd, approve() akan
+        // menjalankan $target->delete() pada data milik UPTD lain.
+        if ($user instanceof Uptd) {
+            return $deleteRequest->uptd_id !== null
+                && (int) $deleteRequest->uptd_id === (int) $user->getKey();
         }
 
         return false;

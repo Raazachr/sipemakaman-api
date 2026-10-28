@@ -18,6 +18,7 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/tools/icons-svg/_preview.html
 /vendor
 Homestead.json
 Homestead.yaml

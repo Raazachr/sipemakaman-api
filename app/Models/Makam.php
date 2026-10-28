@@ -33,6 +33,9 @@ class Makam extends Model
     }
 
     // Almarhum yang saat ini menempati makam ini (1 makam = 1 almarhum aktif)
+    // Catatan: kolom almarhums.makam_id tidak mengunci itu, sehingga satu petak
+    // bisa ditunjuk >1 almarhum (makam tumpang tindih). Jumlah almarhum per petak
+    // dihitung lewat subquery di AlmarhumController::subqueryJmlAlmarhumPerMakam().
     public function almarhum(): HasOne
     {
         return $this->hasOne(Almarhum::class);

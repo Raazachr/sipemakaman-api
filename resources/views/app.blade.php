@@ -3,6 +3,13 @@
 @section('title', 'Aplikasi')
 
 @section('content')
+@php
+    // Aset ikon ada di folder public/. Prefix path diambil dari request supaya
+    // tetap benar baik aplikasi di root domain maupun di sub-folder (mis. /nama-app/public).
+    $iconBase = rtrim(request()->getBaseUrl(), '/') . '/img/icons';
+@endphp
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <div id="app" class="min-h-screen bg-gray-100"></div>
 <div id="toastContainer" class="fixed bottom-4 right-4 z-[100] flex flex-col items-end gap-2"></div>
 
@@ -77,6 +84,44 @@
                 .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
+        // ==================== IKON ====================
+        // Semua ikon memakai file PNG di /img/icons (bukan emoji/teks),
+        // supaya tampilan konsisten di semua browser & perangkat.
+        const ICON_URL = @json($iconBase) + '/';
+        const ICONS = {
+            dashboard: 'dashboard',
+            almarhum: 'almarhum',
+            makam: 'makam',
+            ahliwaris: 'ahliwaris',
+            peta: 'peta',
+            master: 'master',
+            aktivitas: 'aktivitas',
+            permintaan: 'hapus',
+            kapasitas: 'kapasitas',
+            terisi: 'makam-terisi',
+            status: 'status-makam',
+            total: 'total-almarhum',
+            lihat: 'lihat',
+            edit: 'edit',
+            hapus: 'hapus',
+            impor: 'import',
+            setujui: 'cek',
+            tolak: 'larangan',
+            sukses: 'sukses',
+            peringatan: 'peringatan',
+            info: 'info',
+            menu: 'menu',
+            naik: 'sort-asc',
+            turun: 'sort-desc',
+            prev: 'prev',
+            next: 'next',
+        };
+
+        function icon(name, cls) {
+            const file = ICONS[name] || name;
+            return '<img src="' + ICON_URL + file + '.png" alt="" class="ic ' + (cls || '') + '" loading="lazy" decoding="async">';
+        }
+
         function toast(msg, type) {
             const colors = { success: 'bg-sky-600', error: 'bg-red-600', warning: 'bg-amber-500' };
             const container = document.getElementById('toastContainer');
@@ -108,6 +153,14 @@
             const date = new Date(d.length === 10 ? d + 'T00:00:00' : d);
             if (isNaN(date)) return '-';
             return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        // Tampilkan nilai sel tabel: kosong / teks "null" (sisa import lama) -> "-"
+        function cell(v) {
+            if (v === null || v === undefined) return '-';
+            const s = String(v).trim();
+            if (s === '' || s.toLowerCase() === 'null') return '-';
+            return esc(s);
         }
 
         function badge(status) {
@@ -143,22 +196,24 @@
         const canDelete = isSuperAdmin || isUptd;
         // Upload Excel data almarhum & unduh template: hanya SuperAdmin & AdminUptd
         const canImportExport = isSuperAdmin || isUptd;
+        // Kelola kapasitas makam: hanya SuperAdmin & AdminUptd — AdminTPU READ ONLY
+        const canKapasitas = isSuperAdmin || isUptd;
 
         // ==================== MENU DEFINISI ====================
         const menus = [
-            { id: 'dashboard', icon: '📊', label: 'Dashboard' },
-            { id: 'almarhum', icon: '🪦', label: 'Almarhum' },
-            { id: 'makam', icon: '⬛', label: 'Makam' },
-            { id: 'ahliwaris', icon: '👥', label: 'Ahli Waris' },
-            { id: 'peta', icon: '🗺️', label: 'Peta' },
+            { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
+            { id: 'almarhum', icon: 'almarhum', label: 'Almarhum' },
+            { id: 'makam', icon: 'makam', label: 'Makam' },
+            { id: 'ahliwaris', icon: 'ahliwaris', label: 'Ahli Waris' },
+            { id: 'peta', icon: 'peta', label: 'Peta' },
         ];
         if (isSuperAdmin) {
-            menus.push({ id: 'master', icon: '🏛️', label: 'Master' });
+            menus.push({ id: 'master', icon: 'master', label: 'Master' });
         }
         // Log Aktivitas & Permintaan Hapus: SuperAdmin & AdminUptd
         if (isSuperAdmin || isUptd) {
-            menus.push({ id: 'aktivitas', icon: '📜', label: 'Log Aktivitas' });
-            menus.push({ id: 'permintaan', icon: '🗑️', label: 'Permintaan Hapus' });
+            menus.push({ id: 'aktivitas', icon: 'aktivitas', label: 'Log Aktivitas' });
+            menus.push({ id: 'permintaan', icon: 'permintaan', label: 'Permintaan Hapus' });
         }
 
         const userLabel = user ? (user.nama_lengkap || user.username || user.nama_uptd || role) : role;
@@ -184,7 +239,7 @@
                                 <span class="flex-1 bg-sky-700"></span>
                             </div>
                             <div class="flex h-16 items-center gap-2 px-5">
-                                <span class="text-2xl">🏛️</span>
+                                ${icon('master', 'ic-nav')}
                                 <span class="text-lg font-bold">SIPEMAKAMAN</span>
                             </div>
                         </div>
@@ -193,7 +248,7 @@
                                 <a href="#" data-menu="${m.id}"
                                    class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-sky-700 ${m.id === currentMenu ? 'bg-sky-700' : ''}"
                                    id="menu-${m.id}">
-                                    <span>${m.icon}</span> ${m.label}
+                                    ${icon(m.icon, 'ic-nav')} ${m.label}
                                 </a>
                             `).join('')}
                         </nav>
@@ -213,8 +268,10 @@
                     <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
                         <!-- Topbar (mobile) -->
                         <header class="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 md:hidden">
-                            <span class="text-lg font-bold text-sky-700">🏛️ SIPEMAKAMAN</span>
-                            <button id="mobileMenuBtn" class="rounded-lg border border-gray-300 p-2">☰</button>
+                            <div class="flex items-center gap-2 text-lg font-bold text-sky-700">
+                                ${icon('master', 'ic-nav')} SIPEMAKAMAN
+                            </div>
+                            <button id="mobileMenuBtn" class="ic-btn justify-center rounded-lg border border-gray-300 p-2">${icon('menu', 'ic-lg')}</button>
                         </header>
 
                         <main class="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-6">
@@ -238,7 +295,7 @@
                             ${menus.map(m => `
                                 <a href="#" data-menu="${m.id}"
                                    class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white hover:bg-sky-700">
-                                    <span>${m.icon}</span> ${m.label}
+                                    ${icon(m.icon, 'ic-nav')} ${m.label}
                                 </a>`).join('')}
                         </nav>
                     </div>
@@ -311,24 +368,32 @@
 
         // ==================== DASHBOARD ====================
         async function renderDashboard(el) {
-            // Ringkasan: ambil data dari beberapa endpoint (jumlah via pagination .total)
-            const [makamAll, makamTerisi, makamKosong, almarhumData] = await Promise.all([
-                api('/makam?per_page=1'),
-                api('/makam?status=terisi&per_page=1'),
-                api('/makam?status=kosong&per_page=1'),
-                api('/almarhum?per_page=1'),
-            ]);
+            // Satu endpoint ringkasan (sudah dibatasi per role di backend).
+            const { ringkasan: r = {} } = await api('/dashboard?per_page=1');
 
-            const totalMakam = makamAll.total || 0;
-            const terisi = makamTerisi.total || 0;
-            const kosong = makamKosong.total || 0;
-            const totalAlmarhum = almarhumData.total || 0;
+            const totalAlmarhum = r.total_almarhum || 0;
+            const totalMakam    = r.total_makam || 0;
+            const petakTerisi   = r.makam_terisi || 0;
+            const petakKosong   = r.makam_kosong || 0;
+            const tumpangTindih = r.makam_tumpang_tindih || 0;
+            const tunggal       = r.makam_tunggal || 0;
+
+            // Kapasitas makam disetting dari menu Makam (bukan hardcode di sini).
+            const kapasitasMakam = r.kapasitas_makam || 0;
+
+            // "Makam Terisi" mengikuti jumlah data almarhum.
+            const terisi = totalAlmarhum;
 
             const stat = [
-                { label: 'Total Makam', value: totalMakam, icon: '⬛', color: 'border-blue-500' },
-                { label: 'Makam Terisi', value: terisi, icon: '🪦', color: 'border-sky-500' },
-                { label: 'Makam Kosong', value: kosong, icon: '▢', color: 'border-amber-500' },
-                { label: 'Total Almarhum', value: totalAlmarhum, icon: '👤', color: 'border-indigo-500' },
+                { label: 'Kapasitas Makam', value: kapasitasMakam, icon: 'kapasitas', color: 'border-blue-500' },
+                { label: 'Makam Terisi', value: terisi, icon: 'terisi', color: 'border-sky-500' },
+                {
+                    label: 'Status Makam', icon: 'status', color: 'border-amber-500', sub: [
+                        { text: tumpangTindih + ' makam tumpang tindih', cls: 'text-amber-600' },
+                        { text: tunggal + ' makam tunggal', cls: 'text-emerald-600' },
+                    ],
+                },
+                { label: 'Total Almarhum', value: totalAlmarhum, icon: 'total', color: 'border-indigo-500' },
             ];
 
             el.innerHTML = `
@@ -339,8 +404,10 @@
                 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     ${stat.map(s => `
                         <div class="rounded-xl border-t-4 ${s.color} bg-white p-5 shadow-sm">
-                            <div class="text-2xl">${s.icon}</div>
-                            <p class="mt-2 text-3xl font-bold text-gray-900">${esc(s.value)}</p>
+                            <div class="ic-tile mb-3">${icon(s.icon, 'ic-xl')}</div>
+                            ${s.sub
+                                ? `<div class="mt-2 space-y-1">${s.sub.map(x => `<p class="text-sm font-semibold ${x.cls}">${esc(x.text)}</p>`).join('')}</div>`
+                                : `<p class="mt-2 text-3xl font-bold text-gray-900">${esc(s.value)}</p>`}
                             <p class="mt-1 text-sm text-gray-500">${esc(s.label)}</p>
                         </div>`).join('')}
                 </div>
@@ -349,12 +416,12 @@
                     <h2 class="text-lg font-semibold text-gray-900">Distribusi Makam</h2>
                     <div class="mt-4 flex flex-col gap-4 sm:flex-row">
                         <div class="flex-1">
-                            <div class="mb-1 flex justify-between text-sm"><span>Terisi</span><span class="font-semibold">${terisi}</span></div>
-                            <div class="h-2.5 w-full rounded bg-gray-200"><div class="h-2.5 rounded bg-sky-500" style="width:${totalMakam ? (terisi/totalMakam*100).toFixed(1) : 0}%"></div></div>
+                            <div class="mb-1 flex justify-between text-sm"><span>Petak Terisi</span><span class="font-semibold">${petakTerisi}</span></div>
+                            <div class="h-2.5 w-full rounded bg-gray-200"><div class="h-2.5 rounded bg-sky-500" style="width:${totalMakam ? (petakTerisi/totalMakam*100).toFixed(1) : 0}%"></div></div>
                         </div>
                         <div class="flex-1">
-                            <div class="mb-1 flex justify-between text-sm"><span>Kosong</span><span class="font-semibold">${kosong}</span></div>
-                            <div class="h-2.5 w-full rounded bg-gray-200"><div class="h-2.5 rounded bg-amber-500" style="width:${totalMakam ? (kosong/totalMakam*100).toFixed(1) : 0}%"></div></div>
+                            <div class="mb-1 flex justify-between text-sm"><span>Petak Kosong</span><span class="font-semibold">${petakKosong}</span></div>
+                            <div class="h-2.5 w-full rounded bg-gray-200"><div class="h-2.5 rounded bg-amber-500" style="width:${totalMakam ? (petakKosong/totalMakam*100).toFixed(1) : 0}%"></div></div>
                         </div>
                     </div>
                 </div>
@@ -417,6 +484,7 @@
                     <td class="px-3 py-3">${koor ? esc(koor.latitude) : '-'}</td>
                     <td class="px-3 py-3">${koor ? esc(koor.longitude) : '-'}</td>
                     <td class="px-3 py-3">${esc(m?.keterangan || '-')}</td>
+                    <td class="px-3 py-3">${badge(statusPetak(a, m))}</td>
                 </tr>`;
             }).join('');
 
@@ -448,7 +516,7 @@
                         <option value="tanggal_wafat" ${dashAlm.sortBy === 'tanggal_wafat' ? 'selected' : ''}>Tgl Wafat</option>
                         <option value="tanggal_dimakamkan" ${dashAlm.sortBy === 'tanggal_dimakamkan' ? 'selected' : ''}>Tgl Dimakamkan</option>
                     </select>
-                    <button id="dashSortDir" class="rounded-lg border border-gray-300 px-3 py-2 text-sm" title="Arah urutan">${dashAlm.sortDir === 'asc' ? '↑ Naik' : '↓ Turun'}</button>
+                    <button id="dashSortDir" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm" title="Arah urutan">${dashAlm.sortDir === 'asc' ? icon('naik', 'ic-sm') + ' Naik' : icon('turun', 'ic-sm') + ' Turun'}</button>
                 </div>
                 <div class="mt-2 overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 text-xs">
@@ -489,18 +557,19 @@
                                 <th class="px-3 py-3">Koordinat x</th>
                                 <th class="px-3 py-3">Koordinat y</th>
                                 <th class="px-3 py-3">Catatan Lokasi</th>
+                                <th class="px-3 py-3">Status</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${rows || '<tr><td colspan="35" class="px-4 py-6 text-center text-gray-400">Tidak ada data almarhum</td></tr>'}
+                            ${rows || '<tr><td colspan="36" class="px-4 py-6 text-center text-gray-400">Tidak ada data almarhum</td></tr>'}
                         </tbody>
                     </table>
                 </div>
                 <div class="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
                     <span>${data.total} data &middot; halaman ${data.current_page}/${data.last_page}</span>
                     <div class="flex gap-2">
-                        <button id="dashPrev" class="rounded-lg border border-gray-300 px-3 py-1 ${data.current_page <= 1 ? 'opacity-40' : ''}" ${data.current_page <= 1 ? 'disabled' : ''}>←</button>
-                        <button id="dashNext" class="rounded-lg border border-gray-300 px-3 py-1 ${data.current_page >= data.last_page ? 'opacity-40' : ''}" ${data.current_page >= data.last_page ? 'disabled' : ''}>→</button>
+                        <button id="dashPrev" class="inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1 ${data.current_page <= 1 ? 'opacity-40' : ''}" ${data.current_page <= 1 ? 'disabled' : ''}>${icon('prev', 'ic-sm')}</button>
+                        <button id="dashNext" class="inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1 ${data.current_page >= data.last_page ? 'opacity-40' : ''}" ${data.current_page >= data.last_page ? 'disabled' : ''}>${icon('next', 'ic-sm')}</button>
                     </div>
                 </div>`;
 
@@ -525,35 +594,61 @@
                 qs.set('sort_dir', sortDir);
                 const data = await api('/almarhum?' + qs);
 
-                const rows = (data.data || []).map((a, i) => `
-                    <tr class="border-b border-gray-100 hover:bg-gray-50">
-                        <td class="px-4 py-3 text-gray-400">${(data.current_page - 1) * perPage + i + 1}</td>
-                        <td class="px-4 py-3">${esc(a.no_registrasi || '-')}</td>
-                        <td class="px-4 py-3 font-medium whitespace-nowrap">${a.makam ? esc(a.makam.kode_makam) : '-'}</td>
-                        <td class="px-4 py-3 font-medium">${esc(a.nama_lengkap)}</td>
-                        <td class="px-4 py-3">${esc(a.bin_binti || '-')}</td>
-                        <td class="px-4 py-3">${esc(a.nik || '-')}</td>
-                        <td class="px-4 py-3">${esc(a.jenis_kelamin || '-')}</td>
-                        <td class="px-4 py-3">${fmtDate(a.tanggal_lahir)}</td>
-                        <td class="px-4 py-3">${fmtDate(a.tanggal_wafat)}</td>
-                        <td class="px-4 py-3">${fmtDate(a.tanggal_dimakamkan)}</td>
-                        <td class="px-4 py-3">${a.makam?.blok ? esc(a.makam.blok.nama_blok || a.makam.blok.kode_blok || '-') : '-'}</td>
-                        <td class="px-4 py-3">${esc((a.ahli_waris || [])[0]?.nama_lengkap || '-')}</td>
-                        <td class="px-4 py-3">${esc((a.ahli_waris || [])[0]?.no_telepon || '-')}</td>
-                        <td class="px-4 py-3">${a.makam ? badge(a.makam.status) : '-'}</td>
-                        <td class="px-4 py-3 text-right">
-                            <button class="btn-view text-blue-600 hover:text-blue-800 mr-2" data-id="${a.id}">👁</button>
-                            ${canEdit ? `<button class="btn-edit text-sky-600 hover:text-sky-800 mr-2" data-id="${a.id}">✏️</button>` : ''}
-                            ${canDelete ? `<button class="btn-del text-red-600 hover:text-red-800" data-id="${a.id}">🗑</button>`
-                                        : (isAdminTpu ? `<button class="btn-del-request text-sky-600 hover:text-sky-800" data-id="${a.id}" data-nama="${esc(a.nama_lengkap)}">🗑</button>` : '')}
+                const rows = (data.data || []).map((a, i) => {
+                    const m = a.makam || {};
+                    const w = (a.ahli_waris || [])[0] || {};
+                    const k = m.koordinat || {};
+                    return `
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 whitespace-nowrap">
+                        <td class="px-3 py-3 text-gray-400">${(data.current_page - 1) * perPage + i + 1}</td>
+                        <td class="px-3 py-3">${cell(a.no_registrasi)}</td>
+                        <td class="px-3 py-3 font-medium">${cell(m.nomor_makam || m.kode_makam)}</td>
+                        <td class="px-3 py-3 font-medium">${cell(a.nama_lengkap)}</td>
+                        <td class="px-3 py-3">${cell(a.bin_binti)}</td>
+                        <td class="px-3 py-3">${cell(a.nik)}</td>
+                        <td class="px-3 py-3">${cell(a.jenis_kelamin)}</td>
+                        <td class="px-3 py-3">${cell(a.alamat_jalan)}</td>
+                        <td class="px-3 py-3">${cell(a.alamat)}</td>
+                        <td class="px-3 py-3">${cell(a.no_rumah)}</td>
+                        <td class="px-3 py-3">${cell(a.rt)}</td>
+                        <td class="px-3 py-3">${cell(a.rw)}</td>
+                        <td class="px-3 py-3">${cell(a.provinsi)}</td>
+                        <td class="px-3 py-3">${cell(a.kota_kabupaten)}</td>
+                        <td class="px-3 py-3">${cell(a.kecamatan)}</td>
+                        <td class="px-3 py-3">${cell(a.kelurahan)}</td>
+                        <td class="px-3 py-3">${fmtDate(a.tanggal_lahir)}</td>
+                        <td class="px-3 py-3">${fmtDate(a.tanggal_wafat)}</td>
+                        <td class="px-3 py-3">${fmtDate(a.tanggal_dimakamkan)}</td>
+                        <td class="px-3 py-3">${cell(m.blok?.nama_blok || m.blok?.kode_blok)}</td>
+                        <td class="px-3 py-3">${cell(w.nama_lengkap)}</td>
+                        <td class="px-3 py-3">${cell(w.nik)}</td>
+                        <td class="px-3 py-3">${cell(w.alamat_jalan)}</td>
+                        <td class="px-3 py-3">${cell(w.alamat)}</td>
+                        <td class="px-3 py-3">${cell(w.no_rumah)}</td>
+                        <td class="px-3 py-3">${cell(w.rt)}</td>
+                        <td class="px-3 py-3">${cell(w.rw)}</td>
+                        <td class="px-3 py-3">${cell(w.provinsi)}</td>
+                        <td class="px-3 py-3">${cell(w.kota_kabupaten)}</td>
+                        <td class="px-3 py-3">${cell(w.kecamatan)}</td>
+                        <td class="px-3 py-3">${cell(w.kelurahan)}</td>
+                        <td class="px-3 py-3">${cell(w.no_telepon)}</td>
+                        <td class="px-3 py-3">${cell(k.latitude)}</td>
+                        <td class="px-3 py-3">${cell(k.longitude)}</td>
+                        <td class="px-3 py-3">${cell(m.keterangan)}</td>
+                        <td class="sticky right-0 bg-white px-3 py-3 text-right shadow-[-6px_0_6px_-6px_rgba(0,0,0,.15)]">
+                            <button class="btn-view ic-btn justify-center text-blue-600 hover:text-blue-800 mr-2" data-id="${a.id}">${icon('lihat')}</button>
+                            ${canEdit ? `<button class="btn-edit ic-btn justify-center text-sky-600 hover:text-sky-800 mr-2" data-id="${a.id}">${icon('edit')}</button>` : ''}
+                            ${canDelete ? `<button class="btn-del ic-btn justify-center text-red-600 hover:text-red-800" data-id="${a.id}">${icon('hapus')}</button>`
+                                        : (isAdminTpu ? `<button class="btn-del-request ic-btn justify-center text-sky-600 hover:text-sky-800" data-id="${a.id}" data-nama="${esc(a.nama_lengkap)}">${icon('hapus')}</button>` : '')}
                         </td>
-                    </tr>`).join('');
+                    </tr>`;
+                }).join('');
 
                 el.innerHTML = `
                     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
                         <h1 class="text-2xl font-bold text-gray-900">Data Almarhum</h1>
                         <div class="flex gap-2">
-                            ${canImportExport ? `<button id="btnImportAlmarhum" class="rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700">📥 Upload Excel</button>` : ''}
+                            ${canImportExport ? `<button id="btnImportAlmarhum" class="ic-btn rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700">${icon('impor', 'ic-sm')} Upload Excel</button>` : ''}
                             ${canCreate ? `<button id="btnAddAlmarhum" class="rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700">+ Tambah Almarhum</button>` : ''}
                         </div>
                     </div>
@@ -571,20 +666,23 @@
                             <option value="tanggal_wafat" ${sortBy === 'tanggal_wafat' ? 'selected' : ''}>Tgl Wafat</option>
                             <option value="tanggal_dimakamkan" ${sortBy === 'tanggal_dimakamkan' ? 'selected' : ''}>Tgl Dimakamkan</option>
                         </select>
-                        <button id="sortAlmarhumDir" class="rounded-lg border border-gray-300 px-3 py-2 text-sm" title="Arah urutan">${sortDir === 'asc' ? '↑ Naik' : '↓ Turun'}</button>
+                        <button id="sortAlmarhumDir" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm" title="Arah urutan">${sortDir === 'asc' ? icon('naik', 'ic-sm') + ' Naik' : icon('turun', 'ic-sm') + ' Turun'}</button>
                     </div>
                     <div class="overflow-x-auto rounded-xl bg-white shadow-sm">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
                             <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
-                                <tr>
-                                    <th class="px-4 py-3">No</th><th class="px-4 py-3">No. Registrasi</th><th class="px-4 py-3">Nomor Makam</th>
-                                    <th class="px-4 py-3">Nama Almarhum</th><th class="px-4 py-3">Bin/Binti</th><th class="px-4 py-3">NIK</th>
-                                    <th class="px-4 py-3">JK</th><th class="px-4 py-3">Tgl Lahir</th><th class="px-4 py-3">Tgl Meninggal</th><th class="px-4 py-3">Tgl Dimakamkan</th>
-                                    <th class="px-4 py-3">Blok</th><th class="px-4 py-3">Ahli Waris</th><th class="px-4 py-3">No. Telepon</th>
-                                    <th class="px-4 py-3">Status</th><th class="px-4 py-3 text-right">Aksi</th>
+                                <tr class="whitespace-nowrap">
+                                    ${['NO.', 'Nomor Registrasi', 'Nomor Makam', 'Nama Almarhum', 'Binti', 'NIK Almarhum', 'Jenis Kelamin',
+                                       'Nama Jalan Almarhum', 'Detail Jalan', 'No. Rumah', 'RT', 'RW', 'Provinsi', 'Kota/Kabupaten', 'Kecamatan', 'Kelurahan',
+                                       'Tanggal Lahir', 'Tanggal Meninggal', 'Tanggal Dimakamkan', 'Blok',
+                                       'Nama Ahli Waris', 'NIK Ahli Waris',
+                                       'Nama Jalan Ahli Waris', 'Detail Jalan (AW)', 'No. Rumah (AW)', 'RT (AW)', 'RW (AW)', 'Provinsi (AW)', 'Kota/Kab (AW)', 'Kecamatan (AW)', 'Kelurahan (AW)',
+                                       'Nomor Telepon', 'Koordinat X', 'Koordinat Y', 'Catatan Lokasi Makam']
+                                        .map(h => `<th class="px-3 py-3">${h}</th>`).join('')}
+                                    <th class="sticky right-0 bg-gray-50 px-3 py-3 text-right">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody>${rows || '<tr><td colspan="15" class="px-4 py-6 text-center text-gray-400">Tidak ada data</td></tr>'}</tbody>
+                            <tbody>${rows || '<tr><td colspan="36" class="px-4 py-6 text-center text-gray-400">Tidak ada data</td></tr>'}</tbody>
                         </table>
                         <div class="flex flex-wrap items-center justify-between border-t border-gray-200 px-4 py-3 gap-3">
                             <div class="flex items-center gap-2 text-sm text-gray-500">
@@ -597,8 +695,8 @@
                                 <span>baris &middot; ${data.total} data (halaman ${data.current_page}/${data.last_page})</span>
                             </div>
                             <div class="flex gap-2">
-                                <button class="page-prev rounded-lg border border-gray-300 px-3 py-1 ${data.current_page <= 1 ? 'opacity-40' : ''}" ${data.current_page <= 1 ? 'disabled' : ''}>←</button>
-                                <button class="page-next rounded-lg border border-gray-300 px-3 py-1 ${data.current_page >= data.last_page ? 'opacity-40' : ''}" ${data.current_page >= data.last_page ? 'disabled' : ''}>→</button>
+                                <button class="page-prev inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1 ${data.current_page <= 1 ? 'opacity-40' : ''}" ${data.current_page <= 1 ? 'disabled' : ''}>${icon('prev', 'ic-sm')}</button>
+                                <button class="page-next inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1 ${data.current_page >= data.last_page ? 'opacity-40' : ''}" ${data.current_page >= data.last_page ? 'disabled' : ''}>${icon('next', 'ic-sm')}</button>
                             </div>
                         </div>
                     </div>`;
@@ -632,6 +730,17 @@
             load();
         }
 
+        // Status petak untuk satu baris almarhum.
+        // Contoh: "Terisi (Aktif) Tunggal" atau "Kosong (Tersedia) Tumpang Tindih".
+        // "Tumpang Tindih" bila petak itu dipakai lebih dari 1 almarhum
+        // (dihitung backend lewat jml_almarhum_per_makam).
+        function statusPetak(a, m) {
+            if (!m) return '-';
+            const dasar = m.status_petak || m.status || '-';
+            const jml = Number((a && a.jml_almarhum_per_makam) || 0);
+            return dasar + (jml > 1 ? ' Tumpang Tindih' : ' Tunggal');
+        }
+
         // ==================== IMPORT EXCEL (khusus AdminTPU) ====================
         async function importAlmarhumExcel() {
             modal(`
@@ -643,7 +752,7 @@
                 <div id="importErr" class="hidden mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 whitespace-pre-line"></div>
                 <div class="mt-6 flex justify-end gap-2">
                     <button class="modal-close rounded-lg bg-gray-200 px-4 py-2">Batal</button>
-                    <button id="doImport" class="rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700">📥 Upload & Proses</button>
+                    <button id="doImport" class="ic-btn rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700">${icon('impor', 'ic-sm')} Upload & Proses</button>
                 </div>
             `);
 
@@ -705,7 +814,7 @@
                     }
 
                     importMsg.classList.remove('hidden');
-                    importMsg.textContent = '✅ ' + data.message + '\n\nData yang sudah memiliki Blok & Nomor Makam akan otomatis tampil di Peta (menu Peta / beranda). Jika bloknya belum ada, Super Admin / Admin UPTD bisa membuat area bloknya lewat menu Peta.';
+                    importMsg.innerHTML = icon('sukses', 'ic-sm') + esc(data.message) + '\n\nData yang sudah memiliki Blok & Nomor Makam akan otomatis tampil di Peta (menu Peta / beranda). Jika bloknya belum ada, Super Admin / Admin UPTD bisa membuat area bloknya lewat menu Peta.';
                     toast('Import data almarhum selesai');
 
                     const r = data.result;
@@ -720,7 +829,7 @@
                     importErr.textContent = e.message;
                 } finally {
                     doImport.disabled = false;
-                    doImport.textContent = '📥 Upload & Proses';
+                    doImport.innerHTML = icon('impor', 'ic-sm') + ' Upload & Proses';
                 }
             });
         }
@@ -769,6 +878,7 @@
                     <button id="saveAlmarhum" class="rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white">Simpan</button>
                 </div>`);
             document.getElementById('saveAlmarhum').addEventListener('click', () => submitAlmarhum(null));
+            if (canManageKoordinat) initKoordinatMap(null);
         }
 
         async function editAlmarhum(id) {
@@ -783,6 +893,7 @@
                     <button id="saveAlmarhum" class="rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white">Simpan</button>
                 </div>`);
             document.getElementById('saveAlmarhum').addEventListener('click', () => submitAlmarhum(id));
+            if (canManageKoordinat) initKoordinatMap(a);
         }
 
         function formAlmarhum(a, makams) {
@@ -852,6 +963,8 @@
                     ${canManageKoordinat ? `
                     <div class="mt-1 border-t border-gray-200 pt-3">
                         <p class="mb-2 text-sm font-semibold text-gray-700">Lokasi Makam (sesuai format kantor)</p>
+                        <p class="mb-2 text-xs text-gray-500">Klik/geser pin di peta untuk menentukan titik, atau isi angka manual.</p>
+                        <div id="koordinatMap" style="height:220px" class="mb-3 rounded-lg border border-gray-300"></div>
                         <div class="grid grid-cols-2 gap-3">
                             <div><label class="text-sm text-gray-600">Koordinat X (latitude)</label>
                                 <input id="f-lat" type="number" step="any" value="${esc(a.makam?.koordinat?.latitude ?? '')}" placeholder="-6.8988000" class="w-full rounded-lg border border-gray-300 px-3 py-2"></div>
@@ -862,6 +975,71 @@
                             <input id="f-catatan" value="${esc(a.makam?.keterangan ?? '')}" placeholder="mis. Blok A1 petak 001" class="w-full rounded-lg border border-gray-300 px-3 py-2"></div>
                     </div>` : ''}
                 </div>`;
+        }
+
+        // Peta mini di form Almarhum: klik/geser pin -> otomatis isi f-lat & f-lng.
+        // Dipanggil setelah modal() supaya elemen #koordinatMap sudah ada di DOM.
+        let koordinatMapInstance = null;
+        function initKoordinatMap(a) {
+            const mapEl = document.getElementById('koordinatMap');
+            if (!mapEl || typeof L === 'undefined') return;
+
+            if (koordinatMapInstance) {
+                koordinatMapInstance.remove();
+                koordinatMapInstance = null;
+            }
+
+            const existingLat = a?.makam?.koordinat?.latitude;
+            const existingLng = a?.makam?.koordinat?.longitude;
+            const tpuLat = a?.makam?.blok?.tpu?.center_lat;
+            const tpuLng = a?.makam?.blok?.tpu?.center_lng;
+
+            // Prioritas titik awal: koordinat makam yang sudah ada -> titik tengah TPU -> default Bandung.
+            const startLat = Number(existingLat ?? tpuLat ?? -6.8988);
+            const startLng = Number(existingLng ?? tpuLng ?? 107.5925);
+            const hasExisting = existingLat !== undefined && existingLat !== null && existingLat !== '';
+
+            const map = L.map('koordinatMap', { zoomControl: true }).setView([startLat, startLng], hasExisting ? 18 : 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap',
+                maxZoom: 20,
+            }).addTo(map);
+
+            let marker = null;
+            const latInput = document.getElementById('f-lat');
+            const lngInput = document.getElementById('f-lng');
+
+            function placeMarker(lat, lng) {
+                if (marker) { marker.setLatLng([lat, lng]); }
+                else { marker = L.marker([lat, lng], { draggable: true }).addTo(map); marker.on('dragend', syncFromMarker); }
+                latInput.value = lat.toFixed(7);
+                lngInput.value = lng.toFixed(7);
+            }
+
+            function syncFromMarker() {
+                const pos = marker.getLatLng();
+                latInput.value = pos.lat.toFixed(7);
+                lngInput.value = pos.lng.toFixed(7);
+            }
+
+            if (hasExisting) {
+                placeMarker(startLat, startLng);
+            }
+
+            map.on('click', (e) => placeMarker(e.latlng.lat, e.latlng.lng));
+
+            // Kalau angka diketik manual, pin ikut pindah
+            [latInput, lngInput].forEach(input => {
+                input.addEventListener('change', () => {
+                    const lat = parseFloat(latInput.value), lng = parseFloat(lngInput.value);
+                    if (!isNaN(lat) && !isNaN(lng)) placeMarker(lat, lng);
+                });
+            });
+
+            koordinatMapInstance = map;
+
+            // Leaflet butuh ukuran container sudah pasti sebelum render tile-nya rapi
+            setTimeout(() => map.invalidateSize(), 80);
         }
 
         async function submitAlmarhum(id) {
@@ -929,7 +1107,7 @@
                 if (search) qs.set('q', search);
                 qs.set('sort_by', sortBy);
                 qs.set('sort_dir', sortDir);
-                const data = await api('/makam?' + qs);
+                const [data, kap] = await Promise.all([api('/makam?' + qs), api('/makam-kapasitas')]);
 
                 const rows = (data.data || []).map(m => `
                     <tr class="border-b border-gray-100 hover:bg-gray-50">
@@ -940,9 +1118,21 @@
                         <td class="px-4 py-3">${badge(m.status)}</td>
                         <td class="px-4 py-3">${m.almarhum ? esc(m.almarhum.nama_lengkap) : '-'}</td>
                         <td class="px-4 py-3 text-right">
-                            ${canEdit ? `<button class="btn-edit text-sky-600 hover:text-sky-800 mr-2" data-id="${m.id}">✏️</button>` : ''}
-                            ${canDelete ? `<button class="btn-del text-red-600 hover:text-red-800" data-id="${m.id}">🗑</button>`
-                                        : (isAdminTpu ? `<button class="btn-del-request text-sky-600 hover:text-sky-800" data-id="${m.id}" data-nama="${esc(m.kode_makam)}">🗑</button>` : '')}
+                            ${canEdit ? `<button class="btn-edit ic-btn justify-center text-sky-600 hover:text-sky-800 mr-2" data-id="${m.id}">${icon('edit')}</button>` : ''}
+                            ${canDelete ? `<button class="btn-del ic-btn justify-center text-red-600 hover:text-red-800" data-id="${m.id}">${icon('hapus')}</button>`
+                                        : (isAdminTpu ? `<button class="btn-del-request ic-btn justify-center text-sky-600 hover:text-sky-800" data-id="${m.id}" data-nama="${esc(m.kode_makam)}">${icon('hapus')}</button>` : '')}
+                        </td>
+                    </tr>`).join('');
+
+                const rowsKap = (kap.data || []).map(k => `
+                    <tr class="border-b border-gray-100">
+                        <td class="px-4 py-3">${k.tpu ? esc(k.tpu.nama_tpu) : '-'}</td>
+                        <td class="px-4 py-3">${k.tpu ? esc(k.tpu.kode_tpu) : '-'}</td>
+                        <td class="px-4 py-3 font-semibold">${esc(k.jumlah)}</td>
+                        <td class="px-4 py-3">${esc(k.keterangan || '-')}</td>
+                        <td class="px-4 py-3 text-right">
+                            ${canKapasitas ? `<button class="btn-kap-edit ic-btn justify-center text-sky-600 hover:text-sky-800 mr-2" data-id="${k.id}" data-tpu="${esc(k.tpu ? k.tpu.nama_tpu : '')}" data-jumlah="${esc(k.jumlah)}" data-ket="${esc(k.keterangan || '')}">${icon('edit')}</button>` : ''}
+                            ${canKapasitas ? `<button class="btn-kap-del ic-btn justify-center text-red-600 hover:text-red-800" data-id="${k.id}">${icon('hapus')}</button>` : ''}
                         </td>
                     </tr>`).join('');
 
@@ -950,6 +1140,34 @@
                     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
                         <h1 class="text-2xl font-bold text-gray-900">Data Makam</h1>
                         ${canCreate ? `<button id="btnAddMakam" class="rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700">+ Tambah Makam</button>` : ''}
+                    </div>
+                    <div class="mb-4 rounded-xl bg-white p-5 shadow-sm">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h2 class="text-lg font-semibold text-gray-900">Kapasitas Makam</h2>
+                                <p class="text-sm text-gray-500">Dipakai untuk kartu "Kapasitas Makam" di dashboard.</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-3xl font-bold text-gray-900">${esc(kap.total_kapasitas || 0)}</p>
+                                <p class="text-xs text-gray-500">Total petak tersedia</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                                    <tr>
+                                        <th class="px-4 py-3">TPU</th>
+                                        <th class="px-4 py-3">Kode</th>
+                                        <th class="px-4 py-3">Jumlah Petak</th>
+                                        <th class="px-4 py-3">Keterangan</th>
+                                        <th class="px-4 py-3 text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rowsKap || '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">Belum ada data kapasitas</td></tr>'}</tbody>
+                            </table>
+                        </div>
+                        ${canKapasitas ? `<button id="btnAddKapasitas" class="mt-4 rounded-lg border border-sky-600 px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-50">+ Tambah Kapasitas</button>`
+                                     : `<p class="mt-4 text-xs text-gray-400">Hanya SuperAdmin &amp; AdminUptd yang dapat menambah atau mengubah kapasitas.</p>`}
                     </div>
                     <div class="mb-4 flex flex-wrap items-center gap-2">
                         <select id="filterStatus" class="rounded-lg border border-gray-300 px-3 py-2">
@@ -966,7 +1184,7 @@
                             <option value="nomor_makam" ${sortBy === 'nomor_makam' ? 'selected' : ''}>Nomor</option>
                             <option value="status" ${sortBy === 'status' ? 'selected' : ''}>Status</option>
                         </select>
-                        <button id="sortMakamDir" class="rounded-lg border border-gray-300 px-3 py-2 text-sm" title="Arah urutan">${sortDir === 'asc' ? '↑ Naik' : '↓ Turun'}</button>
+                        <button id="sortMakamDir" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm" title="Arah urutan">${sortDir === 'asc' ? icon('naik', 'ic-sm') + ' Naik' : icon('turun', 'ic-sm') + ' Turun'}</button>
                     </div>
                     <div class="overflow-x-auto rounded-xl bg-white shadow-sm">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -990,8 +1208,8 @@
                                 <span>baris &middot; ${data.total} data (halaman ${data.current_page}/${data.last_page})</span>
                             </div>
                             <div class="flex gap-2">
-                                <button class="page-prev rounded-lg border border-gray-300 px-3 py-1 ${data.current_page <= 1 ? 'opacity-40' : ''}" ${data.current_page <= 1 ? 'disabled' : ''}>←</button>
-                                <button class="page-next rounded-lg border border-gray-300 px-3 py-1 ${data.current_page >= data.last_page ? 'opacity-40' : ''}" ${data.current_page >= data.last_page ? 'disabled' : ''}>→</button>
+                                <button class="page-prev inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1 ${data.current_page <= 1 ? 'opacity-40' : ''}" ${data.current_page <= 1 ? 'disabled' : ''}>${icon('prev', 'ic-sm')}</button>
+                                <button class="page-next inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1 ${data.current_page >= data.last_page ? 'opacity-40' : ''}" ${data.current_page >= data.last_page ? 'disabled' : ''}>${icon('next', 'ic-sm')}</button>
                             </div>
                         </div>
                     </div>`;
@@ -1017,8 +1235,92 @@
                     el.querySelector('#btnAddMakam').addEventListener('click', () => addMakam());
                     el.querySelectorAll('.btn-del-request').forEach(b => b.addEventListener('click', () => requestDelete('makam', b.dataset.id, b.dataset.nama)));
                 }
+
+                // ---- Kapasitas Makam ----
+                el.querySelector('#btnAddKapasitas')?.addEventListener('click', () => formKapasitas(null));
+                el.querySelectorAll('.btn-kap-edit').forEach(b => b.addEventListener('click', () => formKapasitas({
+                    id: b.dataset.id,
+                    tpu_nama: b.dataset.tpu,
+                    jumlah: b.dataset.jumlah,
+                    keterangan: b.dataset.ket,
+                })));
+                el.querySelectorAll('.btn-kap-del').forEach(b => b.addEventListener('click', () => delKapasitas(b.dataset.id)));
             }
             load();
+        }
+
+        // ==================== KAPASITAS MAKAM ====================
+        async function formKapasitas(row) {
+            const isEdit = !!(row && row.id);
+            // Untuk tambah: TPU yang belum punya angka kapasitas.
+            const semuaTpu = (await api('/tpu?per_page=100')).data || [];
+            let terpakai = [];
+            try { terpakai = (await api('/makam-kapasitas')).data || []; } catch (e) { /* abaikan */ }
+            const idTerpakai = terpakai.map(k => k.tpu_id);
+            const opsiTpu = semuaTpu
+                .filter(t => !idTerpakai.includes(t.id))
+                .map(t => `<option value="${esc(t.id)}">${esc(t.nama_tpu)} (${esc(t.kode_tpu)})</option>`)
+                .join('');
+
+            modal(`
+                <h2 class="mb-4 text-lg font-bold">${isEdit ? 'Edit' : 'Tambah'} Kapasitas Makam</h2>
+                <div class="space-y-3">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">TPU</label>
+                        ${isEdit
+                            ? `<input type="text" disabled value="${esc(row.tpu_nama)}" class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2">
+                               <p class="mt-1 text-xs text-gray-500">Untuk memindahkan TPU, hapus dulu lalu tambah baru.</p>`
+                            : `<select id="kap-tpu" class="w-full rounded-lg border border-gray-300 px-3 py-2">
+                                   ${opsiTpu || '<option value="">Semua TPU sudah punya kapasitas</option>'}
+                               </select>`}
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Jumlah Petak</label>
+                        <input id="kap-jumlah" type="number" min="0" step="1" value="${isEdit ? esc(row.jumlah) : ''}"
+                               class="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder="Contoh: 1000">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">Keterangan (opsional)</label>
+                        <input id="kap-ket" type="text" maxlength="255" value="${isEdit ? esc(row.keterangan || '') : ''}"
+                               class="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder="Contoh: Kapasitas tahap 1">
+                    </div>
+                </div>
+                <div id="formErr" class="hidden mt-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700"></div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button class="modal-close rounded-lg bg-gray-200 px-4 py-2">Batal</button>
+                    <button id="saveKapasitas" class="rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white">Simpan</button>
+                </div>`);
+
+            document.getElementById('saveKapasitas').addEventListener('click', async () => {
+                const err = document.getElementById('formErr');
+                const payload = {
+                    jumlah: document.getElementById('kap-jumlah').value,
+                    keterangan: document.getElementById('kap-ket').value || null,
+                };
+                if (!isEdit) payload.tpu_id = document.getElementById('kap-tpu').value;
+
+                try {
+                    if (isEdit) await api('/makam-kapasitas/' + row.id, { method: 'PUT', body: JSON.stringify(payload) });
+                    else await api('/makam-kapasitas', { method: 'POST', body: JSON.stringify(payload) });
+                    closeModal();
+                    toast(isEdit ? 'Kapasitas makam berhasil diperbarui' : 'Kapasitas makam berhasil ditambahkan');
+                    render();
+                } catch (e) { err.textContent = e.message; err.classList.remove('hidden'); }
+            });
+        }
+
+        async function delKapasitas(id) {
+            const ok = await confirmDialog({
+                title: 'Hapus Kapasitas Makam',
+                message: 'Hapus angka kapasitas ini? Tindakan tidak dapat dibatalkan.',
+                confirmLabel: 'Hapus',
+            });
+            if (!ok) return;
+            try {
+                await api('/makam-kapasitas/' + id, { method: 'DELETE' });
+                toast('Kapasitas makam berhasil dihapus');
+                render();
+            } catch (e) { toast(e.message, 'error'); }
         }
 
         async function addMakam() {
@@ -1119,9 +1421,9 @@
                         <td class="px-4 py-3">${esc(h.alamat || '-')}</td>
                         <td class="px-4 py-3">${h.almarhum ? esc(h.almarhum.nama_lengkap) : '-'}</td>
                         <td class="px-4 py-3 text-right">
-                            ${canEdit ? `<button class="btn-edit text-sky-600 hover:text-sky-800 mr-2" data-id="${h.id}">✏️</button>` : ''}
-                            ${canDelete ? `<button class="btn-del text-red-600 hover:text-red-800" data-id="${h.id}">🗑</button>`
-                                        : (isAdminTpu ? `<button class="btn-del-request text-sky-600 hover:text-sky-800" data-id="${h.id}" data-nama="${esc(h.nama_lengkap)}">🗑</button>` : '')}
+                            ${canEdit ? `<button class="btn-edit ic-btn justify-center text-sky-600 hover:text-sky-800 mr-2" data-id="${h.id}">${icon('edit')}</button>` : ''}
+                            ${canDelete ? `<button class="btn-del ic-btn justify-center text-red-600 hover:text-red-800" data-id="${h.id}">${icon('hapus')}</button>`
+                                        : (isAdminTpu ? `<button class="btn-del-request ic-btn justify-center text-sky-600 hover:text-sky-800" data-id="${h.id}" data-nama="${esc(h.nama_lengkap)}">${icon('hapus')}</button>` : '')}
                         </td>
                     </tr>`).join('');
 
@@ -1142,7 +1444,7 @@
                             <option value="hubungan" ${sortBy === 'hubungan' ? 'selected' : ''}>Hubungan</option>
                             <option value="no_telepon" ${sortBy === 'no_telepon' ? 'selected' : ''}>No. Telepon</option>
                         </select>
-                        <button id="sortWarrisDir" class="rounded-lg border border-gray-300 px-3 py-2 text-sm" title="Arah urutan">${sortDir === 'asc' ? '↑ Naik' : '↓ Turun'}</button>
+                        <button id="sortWarrisDir" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm" title="Arah urutan">${sortDir === 'asc' ? icon('naik', 'ic-sm') + ' Naik' : icon('turun', 'ic-sm') + ' Turun'}</button>
                     </div>
                     <div class="overflow-x-auto rounded-xl bg-white shadow-sm">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -1165,8 +1467,8 @@
                                 <span>baris &middot; ${data.total} data (halaman ${data.current_page}/${data.last_page})</span>
                             </div>
                             <div class="flex gap-2">
-                                <button class="page-prev rounded-lg border border-gray-300 px-3 py-1 ${data.current_page <= 1 ? 'opacity-40' : ''}" ${data.current_page <= 1 ? 'disabled' : ''}>←</button>
-                                <button class="page-next rounded-lg border border-gray-300 px-3 py-1 ${data.current_page >= data.last_page ? 'opacity-40' : ''}" ${data.current_page >= data.last_page ? 'disabled' : ''}>→</button>
+                                <button class="page-prev inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1 ${data.current_page <= 1 ? 'opacity-40' : ''}" ${data.current_page <= 1 ? 'disabled' : ''}>${icon('prev', 'ic-sm')}</button>
+                                <button class="page-next inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1 ${data.current_page >= data.last_page ? 'opacity-40' : ''}" ${data.current_page >= data.last_page ? 'disabled' : ''}>${icon('next', 'ic-sm')}</button>
                             </div>
                         </div>
                     </div>`;
@@ -1343,8 +1645,8 @@
                                         <span class="ml-2 text-xs text-gray-400">${u.tpus_count ?? 0} TPU</span>
                                     </div>
                                     <div class="flex gap-1">
-                                        <button class="edu text-blue-600 hover:text-blue-800" data-kind="uptd" data-id="${u.id}">✏️</button>
-                                        <button class="edd text-red-600 hover:text-red-800" data-kind="uptd" data-id="${u.id}">🗑</button>
+                                        <button class="edu ic-btn justify-center text-blue-600 hover:text-blue-800" data-kind="uptd" data-id="${u.id}">${icon('edit')}</button>
+                                        <button class="edd ic-btn justify-center text-red-600 hover:text-red-800" data-kind="uptd" data-id="${u.id}">${icon('hapus')}</button>
                                     </div>
                                 </li>`).join('') || '<li class="text-gray-400">Kosong</li>'}
                         </ul>
@@ -1365,8 +1667,8 @@
                                         <div class="mt-0.5">${badge(t.status)}</div>
                                     </div>
                                     <div class="flex gap-1">
-                                        <button class="edu text-blue-600 hover:text-blue-800" data-kind="tpu" data-id="${t.id}">✏️</button>
-                                        <button class="edd text-red-600 hover:text-red-800" data-kind="tpu" data-id="${t.id}">🗑</button>
+                                        <button class="edu ic-btn justify-center text-blue-600 hover:text-blue-800" data-kind="tpu" data-id="${t.id}">${icon('edit')}</button>
+                                        <button class="edd ic-btn justify-center text-red-600 hover:text-red-800" data-kind="tpu" data-id="${t.id}">${icon('hapus')}</button>
                                     </div>
                                 </li>`).join('') || '<li class="text-gray-400">Kosong</li>'}
                         </ul>
@@ -1387,8 +1689,8 @@
                                         <div class="text-xs text-gray-400">${a.tpu ? esc(a.tpu.nama_tpu) : '-'}</div>
                                     </div>
                                     <div class="flex gap-1">
-                                        <button class="edu text-blue-600 hover:text-blue-800" data-kind="admin" data-id="${a.id}">✏️</button>
-                                        <button class="edd text-red-600 hover:text-red-800" data-kind="admin" data-id="${a.id}">🗑</button>
+                                        <button class="edu ic-btn justify-center text-blue-600 hover:text-blue-800" data-kind="admin" data-id="${a.id}">${icon('edit')}</button>
+                                        <button class="edd ic-btn justify-center text-red-600 hover:text-red-800" data-kind="admin" data-id="${a.id}">${icon('hapus')}</button>
                                     </div>
                                 </li>`).join('') || '<li class="text-gray-400">Kosong</li>'}
                         </ul>
@@ -1570,7 +1872,7 @@
                 el.innerHTML = `
                     <div class="mb-6">
                         <h1 class="text-2xl font-bold text-gray-900">Log Aktivitas</h1>
-                        <p class="mt-1 text-sm text-gray-500">${isSuperAdmin ? 'Seluruh aktivitas admin di sistem (Super Admin, Admin UPTD, Admin TPU).' : 'Aktivitas Admin UPTD & Admin TPU di wilayah Anda.'}</p>
+                        <p class="mt-1 text-sm text-gray-500">${isSuperAdmin ? 'Seluruh aktivitas admin di sistem (Super Admin, Admin UPTD, Admin TPU).' : 'Aktivitas Admin TPU di wilayah Anda beserta aktivitas Anda sendiri.'}</p>
                     </div>
                     <div class="mb-4 flex flex-wrap items-center gap-2">
                         <select id="filterAction" class="rounded-lg border border-gray-300 px-3 py-2">
@@ -1591,7 +1893,7 @@
                             <option value="user_name" ${sortBy === 'user_name' ? 'selected' : ''}>Nama</option>
                             <option value="action" ${sortBy === 'action' ? 'selected' : ''}>Aksi</option>
                         </select>
-                        <button id="sortAktivitasDir" class="rounded-lg border border-gray-300 px-3 py-2 text-sm" title="Arah urutan">${sortDir === 'asc' ? '↑ Naik' : '↓ Turun'}</button>
+                        <button id="sortAktivitasDir" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm" title="Arah urutan">${sortDir === 'asc' ? icon('naik', 'ic-sm') + ' Naik' : icon('turun', 'ic-sm') + ' Turun'}</button>
                     </div>
                     <div class="overflow-x-auto rounded-xl bg-white shadow-sm">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -1606,8 +1908,8 @@
                         <div class="flex items-center justify-between border-t border-gray-200 px-4 py-3">
                             <span class="text-sm text-gray-500">Halaman ${data.current_page} dari ${data.last_page}</span>
                             <div class="flex gap-2">
-                                <button class="page-prev rounded-lg border border-gray-300 px-3 py-1 ${data.current_page <= 1 ? 'opacity-40' : ''}" ${data.current_page <= 1 ? 'disabled' : ''}>←</button>
-                                <button class="page-next rounded-lg border border-gray-300 px-3 py-1 ${data.current_page >= data.last_page ? 'opacity-40' : ''}" ${data.current_page >= data.last_page ? 'disabled' : ''}>→</button>
+                                <button class="page-prev inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1 ${data.current_page <= 1 ? 'opacity-40' : ''}" ${data.current_page <= 1 ? 'disabled' : ''}>${icon('prev', 'ic-sm')}</button>
+                                <button class="page-next inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1 ${data.current_page >= data.last_page ? 'opacity-40' : ''}" ${data.current_page >= data.last_page ? 'disabled' : ''}>${icon('next', 'ic-sm')}</button>
                             </div>
                         </div>
                     </div>`;
@@ -1648,8 +1950,8 @@
                         <td class="px-4 py-3">${badge(r.status)}</td>
                         <td class="px-4 py-3 text-right">
                             ${r.status === 'menunggu' ? `
-                                <button class="btn-app text-sky-600 hover:text-sky-800 mr-2" data-id="${r.id}">✓ Setujui</button>
-                                <button class="btn-rej text-red-600 hover:text-red-800" data-id="${r.id}">✕ Tolak</button>` : ''}
+                                <button class="btn-app ic-btn text-sky-600 hover:text-sky-800 mr-2" data-id="${r.id}">${icon('setujui', 'ic-sm')} Setujui</button>
+                                <button class="btn-rej ic-btn text-red-600 hover:text-red-800" data-id="${r.id}">${icon('tolak', 'ic-sm')} Tolak</button>` : ''}
                         </td>
                     </tr>`;
                 }).join('');
@@ -1674,7 +1976,7 @@
                             <option value="status" ${sortBy === 'status' ? 'selected' : ''}>Status</option>
                             <option value="reason" ${sortBy === 'reason' ? 'selected' : ''}>Alasan</option>
                         </select>
-                        <button id="sortPermintaanDir" class="rounded-lg border border-gray-300 px-3 py-2 text-sm" title="Arah urutan">${sortDir === 'asc' ? '↑ Naik' : '↓ Turun'}</button>
+                        <button id="sortPermintaanDir" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm" title="Arah urutan">${sortDir === 'asc' ? icon('naik', 'ic-sm') + ' Naik' : icon('turun', 'ic-sm') + ' Turun'}</button>
                     </div>
                     <div class="overflow-x-auto rounded-xl bg-white shadow-sm">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -1689,8 +1991,8 @@
                         <div class="flex items-center justify-between border-t border-gray-200 px-4 py-3">
                             <span class="text-sm text-gray-500">Halaman ${data.current_page} dari ${data.last_page}</span>
                             <div class="flex gap-2">
-                                <button class="page-prev rounded-lg border border-gray-300 px-3 py-1 ${data.current_page <= 1 ? 'opacity-40' : ''}" ${data.current_page <= 1 ? 'disabled' : ''}>←</button>
-                                <button class="page-next rounded-lg border border-gray-300 px-3 py-1 ${data.current_page >= data.last_page ? 'opacity-40' : ''}" ${data.current_page >= data.last_page ? 'disabled' : ''}>→</button>
+                                <button class="page-prev inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1 ${data.current_page <= 1 ? 'opacity-40' : ''}" ${data.current_page <= 1 ? 'disabled' : ''}>${icon('prev', 'ic-sm')}</button>
+                                <button class="page-next inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 py-1 ${data.current_page >= data.last_page ? 'opacity-40' : ''}" ${data.current_page >= data.last_page ? 'disabled' : ''}>${icon('next', 'ic-sm')}</button>
                             </div>
                         </div>
                     </div>`;
@@ -1798,7 +2100,7 @@
             return new Promise((resolve) => {
                 const overlay = modal(`
                     <div>
-                        <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full ${danger ? 'bg-red-100' : 'bg-sky-100'} text-2xl">${danger ? '🗑️' : 'ℹ️'}</div>
+                        <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full ${danger ? 'bg-red-100' : 'bg-sky-100'}">${danger ? icon('hapus', 'ic-xl') : icon('info', 'ic-xl')}</div>
                         <h2 class="mb-2 text-lg font-bold text-gray-900">${esc(title)}</h2>
                         <p class="whitespace-pre-line text-sm text-gray-600">${esc(message)}</p>
                         <div class="mt-6 flex justify-end gap-2">
@@ -1817,11 +2119,11 @@
             const title = opts.title || 'Perhatian';
             const message = opts.message || '';
             const type = opts.type || 'warning';
-            const icons = { warning: '⚠️', error: '⛔', success: '✅', info: 'ℹ️' };
+            const icons = { warning: 'peringatan', error: 'larangan', success: 'sukses', info: 'info' };
             return new Promise((resolve) => {
                 const overlay = modal(`
                     <div class="text-center">
-                        <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-2xl">${icons[type] || icons.warning}</div>
+                        <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">${icon(icons[type] || icons.warning, 'ic-xl')}</div>
                         <h2 class="mb-2 text-lg font-bold text-gray-900">${esc(title)}</h2>
                         <p class="whitespace-pre-line text-sm text-gray-600">${esc(message)}</p>
                         <div class="mt-6 flex justify-center">

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
-use App\Models\SuperAdmin;
+use App\Models\AdminTpu;
 use App\Models\Uptd;
 use Illuminate\Http\Request;
 
@@ -12,18 +12,22 @@ class ActivityLogController extends Controller
     /**
      * GET /api/activity-logs?per_page=&page=&action=&user_type=
      *
-     * SuperAdmin melihat semua aktivitas; AdminUptd hanya melihat aktivitas
-     * di wilayah UPTD-nya sendiri (aktivitas AdminUPTD-nya + aktivitas
-     * AdminTPU yang berada di TPU binaannya).
+     * SuperAdmin melihat seluruh aktivitas admin; AdminUptd hanya melihat
+     * aktivitas AdminTPU di wilayahnya beserta aktivitasnya sendiri.
      */
     public function index(Request $request)
     {
         $query = ActivityLog::latest('id');
 
-        // AdminUptd hanya melihat aktivitas wilayah UPTD-nya sendiri.
-        // (aktivitas SuperAdmin ber-uptd_id null, otomatis tidak ikut terlihat)
+        // AdminUptd hanya boleh melihat aktivitas di wilayahnya sendiri, yaitu
+        // aktivitas AdminTPU binaannya + aktivitasnya sendiri. Aktivitas
+        // SuperAdmin tidak boleh terlihat sama sekali: saring uptd_id saja tidak
+        // cukup, karena aktivitas SuperAdmin juga dapat terisi uptd_id (mis. saat
+        // SuperAdmin menambah/mengubah UPTD atau TPU), sehingga tanpa batasan
+        // user_type log SuperAdmin ikut terbawa.
         if ($request->user() instanceof Uptd) {
-            $query->where('uptd_id', $request->user()->getKey());
+            $query->where('uptd_id', $request->user()->getKey())
+                ->whereIn('user_type', [class_basename(AdminTpu::class), class_basename(Uptd::class)]);
         }
 
         if ($request->filled('action')) {

@@ -180,6 +180,14 @@ class AlmarhumImportController extends Controller
                             ->where('no_registrasi', $almarhumData['no_registrasi'])
                             ->first();
                     }
+                    // Upload ulang / perbaikan data: kalau no_registrasi tidak
+                    // ketemu (mis. upload pertama belum punya kolom itu — kosong),
+                    // tapi makam yang sama sudah TERISI, anggap penghuninya itu
+                    // almarhum yang sama. Ini mencegah DOBEL ketika file baru
+                    // justru melengkapi No Registrasi / kolom lain yang tadinya kosong.
+                    if (! $existing && $makam) {
+                        $existing = $makam->almarhum()->first();
+                    }
 
                     $isUpdate = false;
 
@@ -387,7 +395,7 @@ class AlmarhumImportController extends Controller
                     $value = $this->toJenisKelamin($value);
                     break;
                 default:
-                    $value = $value === null ? null : trim((string) $value);
+                    $value = $value === null ? null : $this->clean($value);
             }
 
             if ($value === '' || $value === null) {
@@ -410,7 +418,7 @@ class AlmarhumImportController extends Controller
             }
 
             $value = $row[$col] ?? null;
-            $value = $value === null ? null : trim((string) $value);
+            $value = $value === null ? null : $this->clean($value);
 
             if ($value === '' || $value === null) {
                 continue;
@@ -464,12 +472,13 @@ class AlmarhumImportController extends Controller
 
     private function toDate($value): ?string
     {
-        if ($value === null || $value === '') {
+        if ($value === null) {
             return null;
         }
 
+        // Serial date Excel (angka) tidak boleh lewat clean() dulu karena
+        // clean() men-trim jadi string — cek numeric SEBELUM dibersihkan.
         if (is_numeric($value)) {
-            // Serial date Excel
             try {
                 $date = Date::excelToDateTimeObject((float) $value);
 
@@ -479,10 +488,15 @@ class AlmarhumImportController extends Controller
             }
         }
 
-        $value = trim((string) $value);
+        $cleaned = $this->clean($value);
+        if ($cleaned === '') {
+            return null;
+        }
 
         try {
-            return date('Y-m-d', strtotime($value));
+            $timestamp = strtotime($cleaned);
+
+            return $timestamp ? date('Y-m-d', $timestamp) : null;
         } catch (\Throwable $e) {
             return null;
         }
@@ -490,17 +504,18 @@ class AlmarhumImportController extends Controller
 
     private function toFloat($value): ?float
     {
-        if ($value === null || trim((string) $value) === '') {
+        $cleaned = $this->clean($value);
+        if ($cleaned === '') {
             return null;
         }
 
-        $value = str_replace(',', '.', trim((string) $value));
+        $cleaned = str_replace(',', '.', $cleaned);
 
-        if (! is_numeric($value)) {
+        if (! is_numeric($cleaned)) {
             return null;
         }
 
-        return (float) $value;
+        return (float) $cleaned;
     }
 
     private function iniSizeToBytes(string $val): int
@@ -523,6 +538,16 @@ class AlmarhumImportController extends Controller
 
     private function clean($value): string
     {
-        return trim((string) ($value ?? ''));
+        $v = trim((string) ($value ?? ''));
+
+        // Excel/CSV sumber data kadang berisi teks placeholder alih-alih
+        // benar-benar kosong (mis. hasil formula/export yang menulis literal
+        // "null" ke sel). Anggap semua ini sebagai kosong.
+        $placeholders = ['null', 'n/a', 'na', '-', 'none', '#n/a', 'kosong', 'nil', 'undefined'];
+        if (in_array(strtolower($v), $placeholders, true)) {
+            return '';
+        }
+
+        return $v;
     }
 }

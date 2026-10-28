@@ -52,14 +52,45 @@ class AlmarhumController extends Controller
         $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortDir);
 
+        // Jumlah almarhum lain yang menunjuk ke petak makam yang sama.
+        // >1 = "tumpang tindih", tepat 1 = "tunggal". Dipakai untuk kolom Status.
+        $query->addSelect([
+            'jml_almarhum_per_makam' => self::subqueryJmlAlmarhumPerMakam(),
+        ]);
+
         // Hindari undefined index saat per_page tidak valid
         $perPage = min((int) $request->input('per_page', 15), 100);
 
         return response()->json($query->paginate($perPage));
     }
 
+    /**
+     * Subquery: berapa almarhum yang menunjuk ke petak makam yang sama.
+     *
+     * Kolom almarhums.makam_id tidak mengunci 1 makam = 1 almarhum, jadi satu
+     * petak bisa ditunjuk >1 almarhum (makam tumpang tindih). Nilai ini yang
+     * dipakai frontend untuk membedakan "tumpang tindih" vs "tunggal".
+     */
+    public static function subqueryJmlAlmarhumPerMakam()
+    {
+        return Almarhum::query()
+            ->from('almarhums as almarhums_petak')
+            ->selectRaw('COUNT(*)')
+            ->whereColumn('almarhums_petak.makam_id', 'almarhums.makam_id')
+            ->toBase();
+    }
+
     public function store(Request $request)
     {
+        // Hanya Super Admin & Admin UPTD yang boleh menentukan/mengubah titik
+        // koordinat makam. Admin TPU TIDAK boleh — meski UI-nya sudah
+        // menyembunyikan field ini, cek di backend tetap wajib supaya tidak
+        // bisa dilewati lewat request API langsung.
+        $canSetKoordinat = $request->user() instanceof SuperAdmin || $request->user() instanceof Uptd;
+        if (! $canSetKoordinat && ($request->filled('latitude') || $request->filled('longitude') || $request->filled('catatan_makam'))) {
+            return response()->json(['message' => 'Anda tidak memiliki akses untuk mengubah lokasi makam'], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'makam_id' => ['nullable', 'exists:makams,id'],
             'no_registrasi' => ['nullable', 'string', 'unique:almarhums,no_registrasi'],
@@ -157,6 +188,11 @@ class AlmarhumController extends Controller
     {
         if (! $this->authorizeAlmarhum($request->user(), $almarhum, true)) {
             return response()->json(['message' => 'Anda tidak memiliki akses ke data ini'], 403);
+        }
+
+        $canSetKoordinat = $request->user() instanceof SuperAdmin || $request->user() instanceof Uptd;
+        if (! $canSetKoordinat && ($request->filled('latitude') || $request->filled('longitude') || $request->filled('catatan_makam'))) {
+            return response()->json(['message' => 'Anda tidak memiliki akses untuk mengubah lokasi makam'], 403);
         }
 
         // Sanitize input tanggal dari ISO string ("2018-05-12T00:00:00.000000Z" -> "2018-05-12")
